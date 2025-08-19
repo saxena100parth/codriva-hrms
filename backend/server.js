@@ -1,79 +1,99 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const dotenv = require('dotenv');
 const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const connectDB = require('./config/database');
+const errorHandler = require('./middlewares/errorHandler');
+const config = require('./config/config');
+
+// Load env vars
+dotenv.config();
+
+// Connect to database
+connectDB();
+
+// Route imports
+const authRoutes = require('./routes/authRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const leaveRoutes = require('./routes/leaveRoutes');
+const ticketRoutes = require('./routes/ticketRoutes');
+const holidayRoutes = require('./routes/holidayRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(helmet());
-app.use(morgan('combined'));
+// Body parser
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Enable CORS
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
+// Mount routes
+app.use('/api/auth', authRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/holidays', holidayRoutes);
+app.use('/api/users', userRoutes);
 
-// MongoDB Atlas Connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log('✅ Connected to MongoDB Atlas successfully');
-})
-.catch((error) => {
-  console.error('❌ MongoDB Atlas connection error:', error);
-  process.exit(1);
-});
-
-// Basic route
-app.get('/', (req, res) => {
-  res.json({
-    message: 'HRMS Backend API is running!',
-    version: '1.0.0',
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'HRMS API is running',
     timestamp: new Date().toISOString()
   });
 });
 
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/employees', require('./routes/employees'));
-app.use('/api/leaves', require('./routes/leaves'));
-app.use('/api/tickets', require('./routes/tickets'));
-app.use('/api/holidays', require('./routes/holidays'));
-
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Error:', error);
-  res.status(error.status || 500).json({
-    message: error.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Route not found'
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+// Error handler middleware
+app.use(errorHandler);
+
+const PORT = config.PORT || 5000;
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running in ${config.NODE_ENV} mode on port ${PORT}`);
 });
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err, promise) => {
+  console.log(`Error: ${err.message}`);
+  // Close server & exit process
+  server.close(() => process.exit(1));
+});
+
+// Create default admin user on startup
+const createDefaultAdmin = async () => {
+  try {
+    const User = require('./models/User');
+    const adminExists = await User.findOne({ role: 'admin' });
+
+    if (!adminExists) {
+      const admin = await User.create({
+        name: 'System Admin',
+        email: config.DEFAULT_ADMIN_EMAIL,
+        password: config.DEFAULT_ADMIN_PASSWORD,
+        role: 'admin',
+        isActive: true,
+        isOnboarded: true
+      });
+
+      console.log('Default admin user created:', admin.email);
+    }
+  } catch (error) {
+    console.error('Error creating default admin:', error.message);
+  }
+};
+
+// Run after database connection
+setTimeout(createDefaultAdmin, 2000);

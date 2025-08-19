@@ -1,65 +1,45 @@
 # HRMS - Human Resource Management System
 
-A complete full-stack Human Resource Management System built with modern technologies, featuring a React frontend and Node.js backend with MongoDB Atlas integration.
+A comprehensive full-stack Human Resource Management System built with Node.js, Express.js, MongoDB, and React.js.
 
-## 🚀 Project Overview
+## Features
 
-This HRMS system provides comprehensive human resource management capabilities including:
+### Role-Based Access Control
+- **Admin**: Create HR accounts, access all HR features
+- **HR**: Manage employees, approve/reject leaves and tickets, initiate onboarding
+- **Employee**: View profile, apply for leaves, raise tickets, view holidays
 
-- **User Authentication & Authorization** with role-based access control
-- **Employee Management** with detailed profiles and records
-- **User Management** for system administrators
-- **Modern Web Interface** with responsive design
-- **Secure API** with JWT authentication and validation
-- **Database Integration** with MongoDB Atlas cloud database
+### Key Functionalities
+- **Employee Onboarding**: Complete workflow from invitation to approval
+- **Leave Management**: Apply, track, and approve/reject leave requests
+- **Ticket System**: Raise and manage support tickets with priority levels
+- **Holiday Management**: View and manage company holidays
+- **User Management**: Create and manage user accounts
 
-## 🏗️ Architecture
-
-```
-HRMS/
-├── frontend/          # React frontend application
-│   ├── src/          # Source code
-│   ├── public/       # Public assets
-│   └── package.json  # Frontend dependencies
-├── backend/          # Node.js backend API
-│   ├── models/       # MongoDB models
-│   ├── routes/       # API routes
-│   ├── middleware/   # Custom middleware
-│   ├── config/       # Configuration files
-│   └── package.json  # Backend dependencies
-└── README.md         # This file
-```
-
-## 🛠️ Technology Stack
-
-### Frontend
-- **React 18** - Modern React with hooks
-- **Tailwind CSS** - Utility-first CSS framework
-- **React Router** - Client-side routing
-- **React Hook Form** - Form management
-- **Axios** - HTTP client
-- **Lucide React** - Icon library
+## Tech Stack
 
 ### Backend
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web framework
-- **MongoDB Atlas** - Cloud database
-- **Mongoose** - MongoDB ODM
-- **JWT** - Authentication tokens
-- **bcryptjs** - Password hashing
-- **express-validator** - Input validation
+- Node.js with Express.js
+- MongoDB with Mongoose ODM
+- JWT Authentication
+- bcrypt for password hashing
 
-## 🚀 Quick Start
+### Frontend
+- React.js with React Router
+- Tailwind CSS for styling
+- React Hook Form for form management
+- Axios for API calls
+- React Hot Toast for notifications
 
-### Prerequisites
+## Prerequisites
 
-- **Node.js** (v16 or higher)
-- **npm** or **yarn** package manager
-- **MongoDB Atlas** account
-- **Git** for version control
+- Node.js (v14 or higher)
+- MongoDB (v4.4 or higher)
+- npm or yarn
 
-### 1. Clone the Repository
+## Installation & Setup
 
+### 1. Clone the repository
 ```bash
 git clone <repository-url>
 cd HRMS
@@ -67,17 +47,36 @@ cd HRMS
 
 ### 2. Backend Setup
 
+Navigate to the backend directory:
 ```bash
 cd backend
+```
 
-# Install dependencies
+Install dependencies:
+```bash
 npm install
+```
 
-# Environment configuration
-cp env.example .env
-# Edit .env with your MongoDB Atlas connection string and other settings
+Create a `.env` file in the backend directory:
+```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/hrms_db
 
-# Start development server
+# JWT
+JWT_SECRET=your_jwt_secret_key_here_change_in_production
+JWT_EXPIRE=7d
+
+# Server
+PORT=5000
+NODE_ENV=development
+
+# Default Admin
+DEFAULT_ADMIN_EMAIL=admin@hrms.com
+DEFAULT_ADMIN_PASSWORD=Admin@123
+```
+
+Start the backend server:
+```bash
 npm run dev
 ```
 
@@ -85,260 +84,146 @@ The backend will run on `http://localhost:5000`
 
 ### 3. Frontend Setup
 
+Open a new terminal and navigate to the frontend directory:
 ```bash
 cd frontend
+```
 
-# Install dependencies
+Install dependencies:
+```bash
 npm install
+```
 
-# Environment configuration
-# Create .env file with:
-REACT_APP_API_URL=http://localhost:5000/api
-
-# Start development server
+Start the React development server:
+```bash
 npm start
 ```
 
 The frontend will run on `http://localhost:3000`
 
-## 🔐 Authentication & Roles
+## Default Admin Credentials
 
-### User Roles
+The system automatically creates a default admin user on first startup:
+- **Email**: admin@hrms.com
+- **Password**: Admin@123
 
-- **Admin**: Full system access, user management
-- **HR**: Employee management, basic operations
-- **Employee**: Limited access to own profile
+**Important**: Change these credentials immediately after first login in production.
 
-### Default Admin Account
+## Usage Guide
 
-After setting up the database, create an admin user:
+### Admin Workflow
+1. Login with admin credentials
+2. Create HR users from Users > Create HR
+3. Access all features including employee management
 
-```bash
-# Using the API
-POST /api/auth/register
-{
-  "username": "admin",
-  "email": "admin@company.com",
-  "password": "admin123",
-  "role": "admin"
-}
+### HR Workflow
+1. Login with HR credentials
+2. Invite new employees via Employees > Invite Employee
+3. Review onboarding submissions
+4. Manage leaves and tickets
+5. Create and manage holidays
+
+### Employee Workflow
+1. Login with credentials provided by HR
+2. Complete onboarding form (first-time login)
+3. Apply for leaves
+4. Raise support tickets
+5. View company holidays
+6. Update profile information
+
+## Employee Onboarding Process
+1. HR initiates onboarding by entering employee's personal email, official email, and temporary password
+2. Employee receives invitation email (email functionality is placeholder)
+3. Employee logs in and fills personal/professional details
+4. HR reviews and approves/rejects the submission
+5. Upon approval, employee ID is generated and onboarding is complete
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user (Admin only)
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
+- `PUT /api/auth/changepassword` - Change password
+
+### Employees
+- `GET /api/employees` - Get all employees (HR/Admin)
+- `GET /api/employees/:id` - Get employee details
+- `POST /api/employees/onboard` - Initiate onboarding (HR/Admin)
+- `POST /api/employees/onboarding/submit` - Submit onboarding (Employee)
+- `PUT /api/employees/:id/onboarding/review` - Review onboarding (HR/Admin)
+
+### Leaves
+- `GET /api/leaves` - Get leaves
+- `POST /api/leaves` - Apply for leave (Employee)
+- `PUT /api/leaves/:id/status` - Update leave status (HR/Admin)
+- `PUT /api/leaves/:id/cancel` - Cancel leave (Employee)
+
+### Tickets
+- `GET /api/tickets` - Get tickets
+- `POST /api/tickets` - Create ticket (Employee)
+- `PUT /api/tickets/:id` - Update ticket (HR/Admin)
+- `PUT /api/tickets/:id/assign` - Assign ticket (HR/Admin)
+
+### Holidays
+- `GET /api/holidays` - Get holidays
+- `POST /api/holidays` - Create holiday (HR/Admin)
+- `PUT /api/holidays/:id` - Update holiday (HR/Admin)
+- `DELETE /api/holidays/:id` - Delete holiday (HR/Admin)
+
+## Project Structure
+
+```
+HRMS/
+├── backend/
+│   ├── config/          # Configuration files
+│   ├── controllers/     # Route controllers
+│   ├── middlewares/     # Custom middlewares
+│   ├── models/          # Mongoose models
+│   ├── routes/          # API routes
+│   ├── services/        # Business logic
+│   ├── utils/           # Utility functions
+│   └── server.js        # Entry point
+├── frontend/
+│   ├── public/          # Static files
+│   └── src/
+│       ├── components/  # React components
+│       ├── context/     # React context
+│       ├── pages/       # Page components
+│       ├── services/    # API services
+│       ├── App.js       # Main app component
+│       └── index.js     # Entry point
+└── README.md
 ```
 
-## 📊 Database Schema
+## Development
 
-### User Model
-- Authentication credentials
-- Role-based permissions
-- Account status tracking
+### Backend Scripts
+- `npm start` - Start production server
+- `npm run dev` - Start development server with nodemon
 
-### Employee Model
-- Personal information
-- Employment details
-- Document management
-- Status tracking
+### Frontend Scripts
+- `npm start` - Start development server
+- `npm run build` - Build for production
+- `npm test` - Run tests
 
-## 🔒 Security Features
+## Security Considerations
 
-- **JWT Authentication** with secure token management
-- **Password Hashing** using bcryptjs
-- **Input Validation** with express-validator
-- **Rate Limiting** to prevent abuse
-- **CORS Protection** for cross-origin requests
-- **Helmet** security headers
-- **Role-based Access Control**
+1. Change default admin credentials immediately
+2. Use strong JWT secrets in production
+3. Enable CORS only for trusted origins
+4. Implement rate limiting for production
+5. Use HTTPS in production
+6. Sanitize all user inputs
+7. Keep dependencies updated
 
-## 📱 Features
+## Notes
 
-### Core Functionality
-- ✅ User authentication and registration
-- ✅ Role-based access control
-- ✅ Employee management (CRUD operations)
-- ✅ User management (Admin only)
-- ✅ Profile management
-- ✅ Responsive web interface
+- Email functionality is currently a placeholder - integrate with email service (SendGrid, AWS SES) for production
+- File upload functionality for documents is not implemented - add multer configuration for production
+- Add comprehensive logging for production environment
+- Implement backup strategies for MongoDB
 
-### User Interface
-- ✅ Modern, clean design with Tailwind CSS
-- ✅ Mobile-responsive layout
-- ✅ Interactive dashboard
-- ✅ Form validation and error handling
-- ✅ Toast notifications
-- ✅ Loading states and animations
+## License
 
-### API Features
-- ✅ RESTful API design
-- ✅ Comprehensive error handling
-- ✅ Input validation and sanitization
-- ✅ Pagination and search
-- ✅ File upload support (structure ready)
-
-## 🚀 Deployment
-
-### Backend Deployment
-
-1. **Environment Variables**: Set production environment variables
-2. **Database**: Use production MongoDB Atlas cluster
-3. **Process Manager**: Use PM2 or similar for Node.js apps
-4. **Reverse Proxy**: Nginx or Apache for production
-
-### Frontend Deployment
-
-1. **Build**: `npm run build`
-2. **Deploy**: Upload `build` folder to hosting service
-3. **Environment**: Set production API URLs
-4. **HTTPS**: Ensure SSL certificate is configured
-
-### Environment Variables
-
-#### Backend (.env)
-```env
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>
-JWT_SECRET=your_jwt_secret_key_here
-PORT=5000
-NODE_ENV=production
-```
-
-#### Frontend (.env)
-```env
-REACT_APP_API_URL=https://your-api-domain.com/api
-```
-
-## 🧪 Testing
-
-### Backend Testing
-```bash
-cd backend
-npm test
-```
-
-### Frontend Testing
-```bash
-cd frontend
-npm test
-```
-
-## 📈 Performance & Monitoring
-
-### Backend
-- **Morgan** logging for HTTP requests
-- **Error tracking** with detailed error messages
-- **Rate limiting** to prevent abuse
-- **Database connection** monitoring
-
-### Frontend
-- **React Query** for efficient data fetching
-- **Optimized builds** with Create React App
-- **Lazy loading** ready for code splitting
-- **Performance monitoring** with web vitals
-
-## 🔄 Development Workflow
-
-### Code Structure
-- **Modular architecture** with clear separation of concerns
-- **Consistent naming conventions**
-- **Comprehensive error handling**
-- **Input validation** at all levels
-
-### Best Practices
-- **ESLint** configuration for code quality
-- **Prettier** for code formatting
-- **Git hooks** for pre-commit checks
-- **Documentation** for all major components
-
-## 🎯 Roadmap
-
-### Phase 1 (Current)
-- ✅ Basic authentication system
-- ✅ User and employee management
-- ✅ Responsive web interface
-- ✅ API foundation
-
-### Phase 2 (Planned)
-- 🔄 Advanced employee features
-- 🔄 Reporting and analytics
-- 🔄 Document management
-- 🔄 Email notifications
-
-### Phase 3 (Future)
-- 🔄 Mobile application
-- 🔄 Advanced analytics dashboard
-- 🔄 Integration with third-party services
-- 🔄 Multi-tenant support
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. **Fork** the repository
-2. **Create** a feature branch
-3. **Make** your changes
-4. **Test** thoroughly
-5. **Submit** a pull request
-
-### Development Setup
-
-```bash
-# Install dependencies for both projects
-cd backend && npm install
-cd ../frontend && npm install
-
-# Run both servers
-# Terminal 1: Backend
-cd backend && npm run dev
-
-# Terminal 2: Frontend
-cd frontend && npm start
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **MongoDB Connection Error**
-   - Check your connection string in `.env`
-   - Ensure network access is enabled in MongoDB Atlas
-   - Verify username/password are correct
-
-2. **CORS Errors**
-   - Check `CORS_ORIGIN` in backend `.env`
-   - Ensure frontend URL matches backend CORS settings
-
-3. **JWT Token Issues**
-   - Verify `JWT_SECRET` is set in backend `.env`
-   - Check token expiration settings
-
-4. **Port Conflicts**
-   - Backend runs on port 5000 by default
-   - Frontend runs on port 3000 by default
-   - Change ports in respective `.env` files if needed
-
-## 📚 Documentation
-
-- **Backend API**: See `backend/README.md`
-- **Frontend**: See `frontend/README.md`
-- **API Endpoints**: Documented in route files
-- **Database Models**: See `backend/models/`
-
-## 📄 License
-
-This project is licensed under the ISC License.
-
-## 🆘 Support
-
-For support and questions:
-- 📧 Create an issue in the repository
-- 💬 Contact the development team
-- 📖 Check the documentation in each project folder
-
-## 🙏 Acknowledgments
-
-- **React Team** for the amazing framework
-- **Tailwind CSS** for the utility-first CSS framework
-- **MongoDB** for the cloud database service
-- **Express.js** community for the web framework
-
----
-
-**Happy Coding! 🚀**
-
-This HRMS system provides a solid foundation for human resource management with modern web technologies. Feel free to customize and extend it according to your specific needs.
+This project is licensed under the MIT License.

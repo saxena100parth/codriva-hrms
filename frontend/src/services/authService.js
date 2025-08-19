@@ -1,53 +1,44 @@
 import api from './api';
 
-class AuthService {
-    async login(email, password) {
-        try {
-            const response = await api.post('/auth/login', { email, password });
-            return response.data;
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'Login failed');
-        }
-    }
+export const authService = {
+  login: async (email, password) => {
+    const response = await api.post('/auth/login', { email, password });
+    return response.data;
+  },
 
-    async register(userData) {
-        try {
-            const response = await api.post('/auth/register', userData);
-            return response.data;
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'Registration failed');
-        }
-    }
+  logout: async () => {
+    const response = await api.post('/auth/logout');
+    return response.data;
+  },
 
-    async getProfile() {
-        try {
-            const response = await api.get('/auth/me');
-            return response.data;
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'Failed to get profile');
-        }
-    }
+  getMe: async () => {
+    const response = await api.get('/auth/me');
+    return response.data;
+  },
 
-    async updateProfile(userData) {
-        try {
-            const response = await api.put('/auth/me', userData);
-            return response.data;
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'Failed to update profile');
-        }
-    }
+  updateDetails: async (data) => {
+    const response = await api.put('/auth/updatedetails', data);
+    return response.data;
+  },
 
-    async changePassword(currentPassword, newPassword) {
-        try {
-            const response = await api.put('/auth/change-password', {
-                currentPassword,
-                newPassword,
-            });
-            return response.data;
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'Failed to change password');
-        }
-    }
-}
+  changePassword: async (currentPassword, newPassword) => {
+    const response = await api.put('/auth/changepassword', {
+      currentPassword,
+      newPassword
+    });
+    return response.data;
+  },
 
-export const authService = new AuthService();
+  forgotPassword: async (email) => {
+    const response = await api.post('/auth/forgotpassword', { email });
+    return response.data;
+  },
+
+  resetPassword: async (resetToken, password) => {
+    const response = await api.put('/auth/resetpassword', {
+      resetToken,
+      password
+    });
+    return response.data;
+  }
+};
