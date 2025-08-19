@@ -40,7 +40,7 @@ export const userService = {
   // Get user stats
   getUserStats: async () => {
     const response = await api.get('/users/stats');
-    return response.data;
+    return response.data.data; // unwrap {success,data}
   },
 
   // Search users

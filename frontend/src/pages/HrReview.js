@@ -85,8 +85,8 @@ const HrReview = () => {
   }
 
   return (
-    <div>
-      <div className="mb-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Review Onboarding</h1>
         <p className="mt-1 text-sm text-gray-500">
           Review and approve employee onboarding submissions.
@@ -100,13 +100,13 @@ const HrReview = () => {
           <p className="mt-1 text-sm text-gray-500">All employee onboardings have been reviewed.</p>
         </div>
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <div className="bg-white shadow sm:rounded-lg">
           <ul className="divide-y divide-gray-200">
             {pendingOnboardings.map((employee) => (
               <li key={employee._id}>
                 <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center min-w-0">
                       <div className="flex-shrink-0">
                         <img
                           className="h-12 w-12 rounded-full"
@@ -114,24 +114,24 @@ const HrReview = () => {
                           alt=""
                         />
                       </div>
-                      <div className="ml-4">
+                      <div className="ml-4 min-w-0">
                         <div className="text-sm font-medium text-gray-900">
                           {[employee.fullName?.first, employee.fullName?.middle, employee.fullName?.last]
                             .filter(Boolean)
                             .join(' ')}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 truncate">
                           {employee.officialEmail}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 shrink-0">
                       <Link
                         to={`/employees/${employee._id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="relative z-20 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                       >
-                        <EyeIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                        <EyeIcon className="-ml-0.5 mr-2" style={{ width: 16, height: 16 }} />
                         View Details
                       </Link>
                       <button
@@ -139,7 +139,7 @@ const HrReview = () => {
                         onClick={(e) => { e.stopPropagation(); handleReview(employee, 'approve'); }}
                         className="relative z-20 inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                       >
-                        <CheckIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                        <CheckIcon className="-ml-0.5 mr-2" style={{ width: 16, height: 16 }} />
                         Approve
                       </button>
                       <button
@@ -147,25 +147,25 @@ const HrReview = () => {
                         onClick={(e) => { e.stopPropagation(); handleReview(employee, 'reject'); }}
                         className="relative z-20 inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                       >
-                        <XMarkIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                        <XMarkIcon className="-ml-0.5 mr-2" style={{ width: 16, height: 16 }} />
                         Reject
                       </button>
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-3">
                     <div className="flex items-center text-sm text-gray-500">
-                      <CalendarIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                      <CalendarIcon className="flex-shrink-0 mr-1.5 text-gray-400" style={{ width: 16, height: 16 }} />
                       Submitted: {formatDate(employee.onboardingSubmittedAt)}
                     </div>
                     {employee.joiningDate && (
                       <div className="flex items-center text-sm text-gray-500">
-                        <BriefcaseIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                        <BriefcaseIcon className="flex-shrink-0 mr-1.5 text-gray-400" style={{ width: 16, height: 16 }} />
                         Joining: {formatDate(employee.joiningDate)}
                       </div>
                     )}
                     {employee.department && (
                       <div className="flex items-center text-sm text-gray-500">
-                        <DocumentTextIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                        <DocumentTextIcon className="flex-shrink-0 mr-1.5 text-gray-400" style={{ width: 16, height: 16 }} />
                         {employee.department} - {employee.jobTitle}
                       </div>
                     )}

@@ -10,7 +10,13 @@ export const employeeService = {
   // Get single employee
   getEmployee: async (id) => {
     const response = await api.get(`/employees/${id}`);
-    return response.data;
+    return response.data.data; // return the employee object
+  },
+
+  // Explicit alias used by EmployeeDetail
+  getEmployeeById: async (id) => {
+    const response = await api.get(`/employees/${id}`);
+    return response.data.data; // return the employee object
   },
 
   // Get my profile (employee)

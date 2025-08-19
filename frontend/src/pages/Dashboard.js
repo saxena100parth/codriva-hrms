@@ -43,10 +43,10 @@ const Dashboard = () => {
         ]);
 
         setStats({
-          users: userStats.data,
+          users: userStats,
           tickets: ticketStats.data,
-          pendingOnboardings: pendingOnboardings.data.length,
-          pendingLeaves: pendingLeaves.data.length
+          pendingOnboardings: (pendingOnboardings.data || pendingOnboardings).length,
+          pendingLeaves: (pendingLeaves.data || pendingLeaves).length
         });
       } else {
         // Fetch employee stats
@@ -57,7 +57,7 @@ const Dashboard = () => {
         ]);
 
         setStats({
-          leaves: leaveSummary.data,
+          leaves: leaveSummary.data || leaveSummary,
           tickets: myTickets.data.tickets,
           holidays: upcomingHolidays.data
         });
@@ -79,66 +79,92 @@ const Dashboard = () => {
     );
   }
 
+  // Helpers to avoid dynamic Tailwind classes
+  const colorBgMap = {
+    primary: 'bg-primary-50',
+    blue: 'bg-blue-50',
+    green: 'bg-green-50',
+    red: 'bg-red-50',
+    yellow: 'bg-yellow-100',
+    purple: 'bg-purple-100',
+  };
+  const colorTextMap = {
+    primary: 'text-primary-600',
+    blue: 'text-blue-600',
+    green: 'text-green-600',
+    red: 'text-red-600',
+    yellow: 'text-yellow-600',
+    purple: 'text-purple-600',
+  };
+
   // Stat Card Component
-  const StatCard = ({ title, value, subtitle, icon: Icon, color = "primary", trend, link }) => (
-    <div className="card shadow-hover bg-white p-6 transition-all duration-200 hover:scale-105">
-      <div className="flex items-center">
-        <div className={`p-3 rounded-full bg-${color}-50`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
-        </div>
-        <div className="ml-4 flex-1">
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <div className="flex items-baseline">
-            <p className="text-2xl font-semibold text-gray-900">{value}</p>
-            {subtitle && (
-              <p className="ml-2 text-sm font-medium text-gray-500">{subtitle}</p>
+  const StatCard = ({ title, value, subtitle, icon: Icon, color = "primary", trend, link }) => {
+    const bgClass = colorBgMap[color] || colorBgMap.primary;
+    const textClass = colorTextMap[color] || colorTextMap.primary;
+    return (
+      <div className="card shadow-hover bg-white p-6 transition-all duration-200 hover:scale-[1.02]">
+        <div className="flex items-center">
+          <div className={`p-3 rounded-full ${bgClass}`}>
+            <Icon className={`h-6 w-6 ${textClass}`} />
+          </div>
+          <div className="ml-4 flex-1">
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            <div className="flex items-baseline">
+              <p className="text-2xl font-semibold text-gray-900">{value}</p>
+              {subtitle && (
+                <p className="ml-2 text-sm font-medium text-gray-500">{subtitle}</p>
+              )}
+            </div>
+            {trend && (
+              <div className={`flex items-center mt-1 text-sm ${trend.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                {trend.direction === 'up' ? (
+                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
+                ) : (
+                  <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
+                )}
+                {trend.value}
+              </div>
             )}
           </div>
-          {trend && (
-            <div className={`flex items-center mt-1 text-sm ${trend.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-              {trend.direction === 'up' ? (
-                <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              ) : (
-                <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
-              )}
-              {trend.value}
-            </div>
-          )}
         </div>
+        {link && (
+          <div className="mt-4">
+            <Link
+              to={link.href}
+              className="text-sm font-medium text-primary-600 hover:text-primary-500 transition-colors"
+            >
+              {link.text} →
+            </Link>
+          </div>
+        )}
       </div>
-      {link && (
-        <div className="mt-4">
-          <Link
-            to={link.href}
-            className="text-sm font-medium text-primary-600 hover:text-primary-500 transition-colors"
-          >
-            {link.text} →
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   // Quick Action Card Component
-  const QuickActionCard = ({ title, subtitle, icon: Icon, href, color = "primary" }) => (
-    <Link
-      to={href}
-      className="card shadow-hover bg-white p-6 transition-all duration-200 hover:scale-105 block"
-    >
-      <div className="flex items-center">
-        <div className={`p-3 rounded-full bg-${color}-50`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
+  const QuickActionCard = ({ title, subtitle, icon: Icon, href, color = "primary" }) => {
+    const bgClass = colorBgMap[color] || colorBgMap.primary;
+    const textClass = colorTextMap[color] || colorTextMap.primary;
+    return (
+      <Link
+        to={href}
+        className="card shadow-hover bg-white p-6 transition-all duration-200 hover:scale-[1.02] block"
+      >
+        <div className="flex items-center">
+          <div className={`p-3 rounded-full ${bgClass}`}>
+            <Icon className={`h-6 w-6 ${textClass}`} />
+          </div>
+          <div className="ml-4">
+            <h3 className="text-sm font-medium text-gray-900">{title}</h3>
+            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+          </div>
         </div>
-        <div className="ml-4">
-          <h3 className="text-sm font-medium text-gray-900">{title}</h3>
-          <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
-        </div>
-      </div>
-    </Link>
-  );
+      </Link>
+    );
+  };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
       {/* Welcome Header */}
       <div className="gradient-primary rounded-lg p-6 sm:p-8 text-white shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -341,7 +367,7 @@ const Dashboard = () => {
                     {stats.tickets.slice(0, 3).map((ticket) => (
                       <div key={ticket._id} className="flex items-center p-3 bg-gray-50 rounded-lg">
                         <div className={`p-2 rounded-full ${ticket.status === 'open' ? 'bg-yellow-100' :
-                            ticket.status === 'resolved' ? 'bg-green-100' : 'bg-gray-100'
+                          ticket.status === 'resolved' ? 'bg-green-100' : 'bg-gray-100'
                           }`}>
                           {ticket.status === 'open' ? (
                             <ClockIcon className="h-4 w-4 text-yellow-600" />
@@ -356,7 +382,7 @@ const Dashboard = () => {
                           <p className="text-xs text-gray-500">#{ticket.ticketNumber}</p>
                         </div>
                         <span className={`badge ${ticket.status === 'open' ? 'badge-warning' :
-                            ticket.status === 'resolved' ? 'badge-success' : 'badge-danger'
+                          ticket.status === 'resolved' ? 'badge-success' : 'badge-danger'
                           }`}>
                           {ticket.status}
                         </span>

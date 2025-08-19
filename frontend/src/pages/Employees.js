@@ -110,7 +110,7 @@ const Employees = () => {
         <div className="flex items-start space-x-4">
           <img
             className="h-12 w-12 rounded-full ring-2 ring-gray-200"
-            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || 'Employee')}&background=3b82f6&color=fff&bold=true`}
+            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || 'Employee')}&background=3b82f6&color=fff&bold=true&size=96`}
             alt={displayName}
           />
           <div className="flex-1 min-w-0">
@@ -144,7 +144,7 @@ const Employees = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -188,12 +188,12 @@ const Employees = () => {
       </div>
 
       {/* Filters */}
-      <div className="card bg-white p-4 sm:p-6">
+      <div className="card p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <form onSubmit={handleSearch} className="flex-1">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" style={{ width: 16, height: 16 }} />
               <input
                 type="text"
                 value={searchTerm}
@@ -293,7 +293,7 @@ const Employees = () => {
 
           {/* Table View - Desktop only when selected */}
           <div className={`${viewMode === 'table' ? 'hidden lg:block' : 'hidden'}`}>
-            <div className="card bg-white overflow-hidden">
+            <div className="card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -323,7 +323,7 @@ const Employees = () => {
                           <div className="flex items-center">
                             <img
                               className="h-10 w-10 rounded-full"
-                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent((formatFullName(employee.fullName) || employee.name || 'Employee'))}&background=3b82f6&color=fff&bold=true`}
+                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent((formatFullName(employee.fullName) || employee.name || 'Employee'))}&background=3b82f6&color=fff&bold=true&size=64`}
                               alt=""
                             />
                             <div className="ml-4">

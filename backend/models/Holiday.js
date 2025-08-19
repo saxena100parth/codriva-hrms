@@ -45,8 +45,8 @@ const holidaySchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Extract year from date before saving
-holidaySchema.pre('save', function(next) {
+// Extract year from date before validation so required validator passes
+holidaySchema.pre('validate', function (next) {
   if (this.date) {
     this.year = new Date(this.date).getFullYear();
   }
@@ -59,22 +59,22 @@ holidaySchema.index({ date: 1 });
 holidaySchema.index({ year: 1 });
 
 // Static method to get holidays for a specific year
-holidaySchema.statics.getHolidaysByYear = function(year) {
+holidaySchema.statics.getHolidaysByYear = function (year) {
   return this.find({ year }).sort({ date: 1 });
 };
 
 // Static method to check if a date is a holiday
-holidaySchema.statics.isHoliday = async function(date) {
+holidaySchema.statics.isHoliday = async function (date) {
   const checkDate = new Date(date);
   checkDate.setHours(0, 0, 0, 0);
-  
+
   const holiday = await this.findOne({
     date: {
       $gte: checkDate,
       $lt: new Date(checkDate.getTime() + 24 * 60 * 60 * 1000)
     }
   });
-  
+
   return !!holiday;
 };
 

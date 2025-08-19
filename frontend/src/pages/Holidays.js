@@ -358,15 +358,17 @@ const Holidays = () => {
                           <div className="flex space-x-1">
                             <button
                               onClick={() => handleEdit(holiday)}
-                              className="text-gray-400 hover:text-gray-500"
+                              className="inline-flex items-center px-2 py-1 rounded text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                             >
                               <PencilIcon className="h-4 w-4" />
+                              <span className="ml-1 text-xs font-medium">Edit</span>
                             </button>
                             <button
                               onClick={() => handleDelete(holiday._id)}
-                              className="text-gray-400 hover:text-red-500"
+                              className="inline-flex items-center px-2 py-1 rounded text-red-600 hover:bg-red-50 hover:text-red-700"
                             >
                               <TrashIcon className="h-4 w-4" />
+                              <span className="ml-1 text-xs font-medium">Delete</span>
                             </button>
                           </div>
                         )}

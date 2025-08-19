@@ -109,7 +109,7 @@ const Layout = () => {
           <div className="flex-shrink-0">
             <img
               className="h-10 w-10 rounded-full ring-2 ring-gray-200"
-              src={`https://ui-avatars.com/api/?name=${user?.name}&background=3b82f6&color=fff&bold=true`}
+              src={`https://ui-avatars.com/api/?name=${user?.name}&background=3b82f6&color=fff&bold=true&size=64`}
               alt={user?.name}
             />
           </div>
@@ -119,10 +119,15 @@ const Layout = () => {
           </div>
           <button
             onClick={handleLogout}
-            className="ml-2 p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+            className="ml-2 logout-btn inline-flex items-center"
+            aria-label="Logout"
             title="Logout"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H9m0 0l3-3m-3 3l3 3" />
+            </svg>
+            <span className="ml-2 text-sm font-medium">Logout</span>
           </button>
         </div>
       </div>
@@ -130,7 +135,7 @@ const Layout = () => {
   );
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50">
       {/* Mobile Sidebar Overlay */}
       {isMobile && sidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
@@ -193,7 +198,7 @@ const Layout = () => {
                 <div className="flex items-center">
                   <img
                     className="h-8 w-8 rounded-full ring-2 ring-gray-200"
-                    src={`https://ui-avatars.com/api/?name=${user?.name}&background=3b82f6&color=fff&bold=true`}
+                    src={`https://ui-avatars.com/api/?name=${user?.name}&background=3b82f6&color=fff&bold=true&size=64`}
                     alt={user?.name}
                   />
                   <span className="ml-2 text-sm font-medium text-gray-700 hidden lg:block">
@@ -206,9 +211,9 @@ const Layout = () => {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto focus:outline-none">
+        <main className="flex-1 focus:outline-none">
           <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8">
               <Outlet />
             </div>
           </div>

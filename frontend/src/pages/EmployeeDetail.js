@@ -11,6 +11,14 @@ const EmployeeDetail = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
+  const formatAddress = (addr) => {
+    if (!addr || typeof addr !== 'object') return addr || 'Not provided';
+    const parts = [addr.line1, addr.line2, addr.city, addr.state, addr.zip, addr.country]
+      .filter(Boolean)
+      .join(', ');
+    return parts || 'Not provided';
+  };
+
   useEffect(() => {
     fetchEmployee();
   }, [id]);
@@ -213,11 +221,11 @@ const EmployeeDetail = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Current Address</label>
-            <p className="text-gray-900">{employee.currentAddress || 'Not provided'}</p>
+            <p className="text-gray-900">{formatAddress(employee.currentAddress)}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Permanent Address</label>
-            <p className="text-gray-900">{employee.permanentAddress || 'Not provided'}</p>
+            <p className="text-gray-900">{formatAddress(employee.permanentAddress)}</p>
           </div>
         </div>
       </div>
