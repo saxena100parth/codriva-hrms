@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { employeeService } from '../services/employeeService';
 import toast from 'react-hot-toast';
+import usePersistentState from '../hooks/usePersistentState';
 import {
   MagnifyingGlassIcon,
   UserPlusIcon,
@@ -21,14 +22,14 @@ const Employees = () => {
       .join(' ')
       .trim();
   };
-  const [employees, setEmployees] = useState([]);
+  const [employees, setEmployees] = usePersistentState('employees', []);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'table'
+  const [searchTerm, setSearchTerm] = usePersistentState('employeeSearchTerm', '');
+  const [departmentFilter, setDepartmentFilter] = usePersistentState('departmentFilter', '');
+  const [statusFilter, setStatusFilter] = usePersistentState('statusFilter', '');
+  const [viewMode, setViewMode] = usePersistentState('viewMode', 'cards'); // 'cards' or 'table'
   const [showFilters, setShowFilters] = useState(false);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = usePersistentState('employeePagination', {
     page: 1,
     limit: 10,
     total: 0,
@@ -37,7 +38,7 @@ const Employees = () => {
 
   useEffect(() => {
     fetchEmployees();
-  }, [pagination.page, departmentFilter, statusFilter]);
+  }, [pagination.page, departmentFilter, statusFilter]); // fetchEmployees is stable
 
   const fetchEmployees = async () => {
     try {
@@ -144,7 +145,7 @@ const Employees = () => {
   };
 
   return (
-    <div className="max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+    <div className="w-full max-w-none space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>

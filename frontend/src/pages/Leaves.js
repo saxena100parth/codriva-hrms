@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { leaveService } from '../services/leaveService';
 import { useForm } from 'react-hook-form';
@@ -19,7 +20,7 @@ const Leaves = () => {
   const [loading, setLoading] = useState(true);
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [leaveSummary, setLeaveSummary] = useState(null);
-  const [selectedLeave, setSelectedLeave] = useState(null);
+
   const [expandedLeaves, setExpandedLeaves] = useState([]);
   const [filter, setFilter] = useState('all');
   const [reviewModal, setReviewModal] = useState({ show: false, leave: null, action: '' });
@@ -32,7 +33,7 @@ const Leaves = () => {
     if (isEmployee) {
       fetchLeaveSummary();
     }
-  }, [filter]);
+  }, [filter]); // fetchLeaves and fetchLeaveSummary are stable, isEmployee checked inside
 
   const fetchLeaves = async () => {
     try {
@@ -169,7 +170,7 @@ const Leaves = () => {
   };
 
   return (
-    <div>
+    <div className="w-full">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Leave Management</h1>
@@ -600,73 +601,69 @@ const Leaves = () => {
       </div>
 
       {/* Review Modal */}
-      {reviewModal.show && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${reviewModal.action === 'approved' ? 'bg-green-100' : 'bg-red-100'
-                    } sm:mx-0 sm:h-10 sm:w-10`}>
-                    {reviewModal.action === 'approved' ? (
-                      <CheckCircleIcon className="h-6 w-6 text-green-600" />
-                    ) : (
-                      <XCircleIcon className="h-6 w-6 text-red-600" />
+      {reviewModal.show && createPortal(
+        <div className="fixed z-[9999] inset-0 flex items-center justify-center p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setReviewModal({ show: false, leave: null, action: '' })}></div>
+          <div className="relative bg-white rounded-lg shadow-2xl border border-gray-200 w-96 max-w-md transform transition-all z-[10000]">
+            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <div className="sm:flex sm:items-start">
+                <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${reviewModal.action === 'approved' ? 'bg-green-100' : 'bg-red-100'
+                  } sm:mx-0 sm:h-10 sm:w-10`}>
+                  {reviewModal.action === 'approved' ? (
+                    <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                  ) : (
+                    <XCircleIcon className="h-6 w-6 text-red-600" />
+                  )}
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    {reviewModal.action === 'approved' ? 'Approve' : 'Reject'} Leave Request
+                  </h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Are you sure you want to {reviewModal.action === 'approved' ? 'approve' : 'reject'} this leave request?
+                    </p>
+                    {reviewModal.action === 'rejected' && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Rejection Reason <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          rows={3}
+                          className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          placeholder="Please provide a reason for rejection..."
+                        />
+                      </div>
                     )}
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      {reviewModal.action === 'approved' ? 'Approve' : 'Reject'} Leave Request
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Are you sure you want to {reviewModal.action === 'approved' ? 'approve' : 'reject'} this leave request?
-                      </p>
-                      {reviewModal.action === 'rejected' && (
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Rejection Reason <span className="text-red-500">*</span>
-                          </label>
-                          <textarea
-                            value={rejectionReason}
-                            onChange={(e) => setRejectionReason(e.target.value)}
-                            rows={3}
-                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                            placeholder="Please provide a reason for rejection..."
-                          />
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  onClick={submitReview}
-                  disabled={reviewModal.action === 'rejected' && !rejectionReason}
-                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-10 text-base font-medium text-white ${reviewModal.action === 'approved'
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-red-600 hover:bg-red-700'
-                    } focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  Confirm
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReviewModal({ show: false, leave: null, action: '' })}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button
+                type="button"
+                onClick={submitReview}
+                disabled={reviewModal.action === 'rejected' && !rejectionReason}
+                className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white ${reviewModal.action === 'approved'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-red-600 hover:bg-red-700'
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewModal({ show: false, leave: null, action: '' })}
+                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

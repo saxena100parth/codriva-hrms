@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
-  PencilIcon,
   LockClosedIcon,
   CheckCircleIcon,
   XCircleIcon
@@ -28,7 +27,7 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [pagination.page, roleFilter, statusFilter]);
+  }, [pagination.page, roleFilter, statusFilter]); // fetchUsers is stable
 
   const fetchUsers = async () => {
     try {
@@ -40,7 +39,7 @@ const Users = () => {
         ...(roleFilter && { role: roleFilter }),
         ...(statusFilter && { isActive: statusFilter })
       };
-      
+
       const response = await userService.getUsers(params);
       setUsers(response.data.users);
       setPagination(response.data.pagination);
@@ -84,7 +83,7 @@ const Users = () => {
   };
 
   return (
-    <div>
+    <div className="w-full">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
@@ -152,8 +151,8 @@ const Users = () => {
 
       {/* Users Table */}
       <div className="mt-8 flex flex-col">
-        <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+        <div className="table-responsive">
+          <div className="inline-block min-w-full py-2 align-middle">
             <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
               <table className="min-w-full divide-y divide-gray-300">
                 <thead className="bg-gray-50">
@@ -194,11 +193,10 @@ const Users = () => {
                           {user.email}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
                             user.role === 'hr' ? 'bg-blue-100 text-blue-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
+                              'bg-green-100 text-green-800'
+                            }`}>
                             {user.role}
                           </span>
                         </td>

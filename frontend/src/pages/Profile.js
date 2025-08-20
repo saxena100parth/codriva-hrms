@@ -4,10 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { employeeService } from '../services/employeeService';
 import toast from 'react-hot-toast';
 import {
-  UserCircleIcon,
-  EnvelopeIcon,
-  BriefcaseIcon,
-  KeyIcon,
   EyeIcon,
   EyeSlashIcon
 } from '@heroicons/react/24/outline';
@@ -29,7 +25,7 @@ const Profile = () => {
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user]); // fetchEmployeeProfile is stable
 
   const fetchEmployeeProfile = async () => {
     try {
@@ -74,7 +70,7 @@ const Profile = () => {
   }
 
   return (
-    <div>
+    <div className="w-full max-w-none">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">My Profile</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -83,14 +79,14 @@ const Profile = () => {
       </div>
 
       {/* Profile Header */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <div className="flex items-center">
+      <div className="bg-white shadow rounded-lg p-6 mb-6 w-full block">
+        <div className="flex items-center w-full">
           <img
-            className="h-20 w-20 rounded-full"
+            className="h-20 w-20 rounded-full flex-shrink-0"
             src={`https://ui-avatars.com/api/?name=${user?.name}&background=3b82f6&color=fff&size=200`}
             alt=""
           />
-          <div className="ml-6">
+          <div className="ml-6 flex-1">
             <h2 className="text-xl font-bold text-gray-900">{user?.name}</h2>
             <p className="text-sm text-gray-500">{user?.email}</p>
             <p className="text-sm text-gray-500 capitalize">{user?.role}</p>
@@ -102,37 +98,34 @@ const Profile = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 px-6">
+      <div className="bg-white shadow rounded-lg w-full block">
+        <div className="border-b border-gray-200 w-full">
+          <nav className="-mb-px flex space-x-8 px-6 w-full">
             <button
               onClick={() => setActiveTab('personal')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'personal'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'personal'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               Personal Information
             </button>
             <button
               onClick={() => setActiveTab('security')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'security'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'security'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               Security
             </button>
             {user?.role === 'employee' && (
               <button
                 onClick={() => setActiveTab('employment')}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'employment'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'employment'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 Employment Details
               </button>
@@ -140,10 +133,10 @@ const Profile = () => {
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 w-full">
           {/* Personal Information Tab */}
           {activeTab === 'personal' && (
-            <form onSubmit={handleProfileSubmit(onProfileSubmit)} className="space-y-6">
+            <form onSubmit={handleProfileSubmit(onProfileSubmit)} className="space-y-6 w-full">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   Full Name
@@ -239,9 +232,9 @@ const Profile = () => {
 
           {/* Security Tab */}
           {activeTab === 'security' && (
-            <form onSubmit={handlePasswordSubmit(onPasswordSubmit)} className="space-y-6 max-w-lg">
+            <form onSubmit={handlePasswordSubmit(onPasswordSubmit)} className="space-y-6 w-full max-w-none">
               <h3 className="text-lg font-medium text-gray-900">Change Password</h3>
-              
+
               <div>
                 <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
                   Current Password
@@ -334,7 +327,7 @@ const Profile = () => {
 
           {/* Employment Details Tab (Employee Only) */}
           {activeTab === 'employment' && user?.role === 'employee' && employee && (
-            <div className="space-y-6">
+            <div className="space-y-6 w-full">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Employee ID</h3>

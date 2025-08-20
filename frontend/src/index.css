@@ -2,6 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global box-sizing and overflow prevention */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Responsive layout utilities */
+.responsive-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.no-horizontal-scroll {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Responsive table wrapper */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 600px;
+  width: 100%;
+}
+
 /* Component layer to keep existing class names, powered by Tailwind */
 @layer components {
   .btn {
@@ -369,7 +411,7 @@
   background-color: #dcfce7;
 }
 
-/* Primary Colors */
+/* Codriva Brand Primary Colors */
 .bg-primary-50 {
   background-color: #eff6ff;
 }

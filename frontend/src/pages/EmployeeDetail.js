@@ -98,7 +98,7 @@ const EmployeeDetail = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Employee Details</h1>
         <div className="flex space-x-3">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import usePersistentState from '../hooks/usePersistentState';
 import {
   UsersIcon,
   CalendarIcon,
@@ -22,12 +23,21 @@ import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user, isAdmin, isHR, isEmployee } = useAuth();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = usePersistentState('dashboardStats', null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    // Check if we have cached data that's less than 5 minutes old
+    const lastFetch = localStorage.getItem('dashboard_lastFetch');
+    const now = Date.now();
+    const fiveMinutes = 5 * 60 * 1000;
+
+    if (!lastFetch || (now - parseInt(lastFetch)) > fiveMinutes || !stats) {
+      fetchDashboardData();
+    } else {
+      setLoading(false);
+    }
+  }, [stats]);
 
   const fetchDashboardData = async () => {
     try {
@@ -62,6 +72,9 @@ const Dashboard = () => {
           holidays: upcomingHolidays.data
         });
       }
+
+      // Cache the fetch timestamp
+      localStorage.setItem('dashboard_lastFetch', Date.now().toString());
     } catch (error) {
       toast.error('Failed to fetch dashboard data');
       console.error(error);
@@ -164,7 +177,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
+    <div className="w-full max-w-none space-y-6 sm:space-y-8">
       {/* Welcome Header */}
       <div className="gradient-primary rounded-lg p-6 sm:p-8 text-white shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">

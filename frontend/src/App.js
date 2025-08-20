@@ -34,7 +34,10 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     );
   }
 
+  // Persist current path so a refresh returns here after auth check
+  const intendedPath = window.location.pathname + window.location.search;
   if (!isAuthenticated) {
+    localStorage.setItem('intended_path', intendedPath);
     return <Navigate to="/login" replace />;
   }
 

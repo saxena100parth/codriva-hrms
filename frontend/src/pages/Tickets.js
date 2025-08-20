@@ -18,7 +18,7 @@ import {
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 
 const Tickets = () => {
-  const { user, isEmployee, isHR, isAdmin } = useAuth();
+  const { isEmployee, isHR, isAdmin } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -40,7 +40,7 @@ const Tickets = () => {
     if (isHR || isAdmin) {
       fetchHRUsers();
     }
-  }, [filter]);
+  }, [filter]); // fetchTickets and fetchHRUsers are stable, isHR/isAdmin checked inside
 
   const fetchTickets = async () => {
     try {
@@ -184,7 +184,7 @@ const Tickets = () => {
   };
 
   return (
-    <div>
+    <div className="w-full">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Support Tickets</h1>
@@ -248,7 +248,7 @@ const Tickets = () => {
               <label className="block text-sm font-medium text-gray-700">Subject</label>
               <input
                 type="text"
-                {...register('subject', { 
+                {...register('subject', {
                   required: 'Subject is required',
                   maxLength: { value: 100, message: 'Subject cannot exceed 100 characters' }
                 })}
@@ -303,11 +303,10 @@ const Tickets = () => {
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm capitalize ${
-                filter === status
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm capitalize ${filter === status
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               {status.replace('-', ' ')}
             </button>
@@ -405,9 +404,8 @@ const Tickets = () => {
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <StarIconSolid
                                     key={star}
-                                    className={`h-5 w-5 ${
-                                      star <= ticket.rating ? 'text-yellow-400' : 'text-gray-300'
-                                    }`}
+                                    className={`h-5 w-5 ${star <= ticket.rating ? 'text-yellow-400' : 'text-gray-300'
+                                      }`}
                                   />
                                 ))}
                                 {ticket.feedback && (

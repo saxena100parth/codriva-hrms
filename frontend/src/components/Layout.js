@@ -67,10 +67,10 @@ const Layout = () => {
       {/* Logo Section */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
         <div className="flex items-center">
-          <div className="h-8 w-8 gradient-primary rounded-lg flex items-center justify-center mr-3 shadow-lg">
-            <span className="text-lg font-bold text-white">H</span>
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center mr-3 shadow-lg" style={{ background: '#3b82f6' }}>
+            <span className="text-lg font-bold text-white">C</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900">HRMS</h2>
+          <h2 className="text-xl font-bold text-gray-900">Codriva HRMS</h2>
         </div>
         {mobile && (
           <button
@@ -135,7 +135,7 @@ const Layout = () => {
   );
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50 w-full">
       {/* Mobile Sidebar Overlay */}
       {isMobile && sidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
@@ -143,7 +143,7 @@ const Layout = () => {
             className="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity"
             onClick={() => setSidebarOpen(false)}
           />
-          <div className="relative flex flex-col w-full max-w-xs bg-white shadow-xl">
+          <div className="relative flex flex-col w-full max-w-xs bg-white shadow-xl flex-shrink-0">
             <SidebarContent mobile={true} />
           </div>
         </div>
@@ -151,7 +151,7 @@ const Layout = () => {
 
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+        <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:flex-shrink-0">
           <div className="flex flex-col flex-1 bg-white border-r border-gray-200 shadow-sm">
             <SidebarContent />
           </div>
@@ -159,10 +159,10 @@ const Layout = () => {
       )}
 
       {/* Main Content */}
-      <div className={`flex flex-col flex-1 ${!isMobile ? 'md:pl-64' : ''}`}>
+      <div className={`flex flex-col flex-1 w-full min-w-0 ${!isMobile ? 'md:pl-64' : ''}`}>
         {/* Top Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+          <div className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
             {/* Mobile menu button */}
             {isMobile && (
               <button
@@ -211,11 +211,9 @@ const Layout = () => {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 focus:outline-none">
-          <div className="py-6">
-            <div className="max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8">
-              <Outlet />
-            </div>
+        <main className="flex-1 focus:outline-none w-full min-w-0">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+            <Outlet />
           </div>
         </main>
       </div>

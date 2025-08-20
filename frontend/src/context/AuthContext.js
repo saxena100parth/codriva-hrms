@@ -1,5 +1,6 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
+import usePersistentState from '../hooks/usePersistentState';
 
 const AuthContext = createContext();
 
@@ -12,12 +13,21 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  // Hydrate user from localStorage to avoid losing state on refresh
+  const [user, setUser] = usePersistentState('user', null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Set axios defaults
   axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+  // Initialize auth token on app load
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setAuthToken(token);
+    }
+  }, []);
 
   // Set auth token in axios headers
   const setAuthToken = (token) => {
@@ -34,21 +44,41 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      if (token) {
-        setAuthToken(token);
+      if (token && user) {
+        // We have both token and cached user, just validate token is still good
+        try {
+          await axios.get('/auth/me');
+          // Token is valid, keep existing user data
+        } catch (err) {
+          console.error('Token validation failed:', err);
+          setAuthToken(null);
+          setUser(null);
+        }
+      } else if (token && !user) {
+        // We have token but no user, fetch user data
         try {
           const response = await axios.get('/auth/me');
           setUser(response.data.data);
         } catch (err) {
           console.error('Auth check failed:', err);
           setAuthToken(null);
-          // Don't show error for auth check failures during app load
+          setUser(null);
         }
+      } else {
+        // No token, clear user data
+        setUser(null);
       }
       setLoading(false);
     };
-    checkAuth();
-  }, []);
+
+    // Only run auth check if we have a token or user data
+    const token = localStorage.getItem('token');
+    if (token || user) {
+      checkAuth();
+    } else {
+      setLoading(false);
+    }
+  }, [setUser, user]);
 
   // Login function
   const login = async (email, password) => {
@@ -56,10 +86,11 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       const response = await axios.post('/auth/login', { email, password });
       const { user, token, employee } = response.data.data;
-      
+
       setAuthToken(token);
-      setUser({ ...user, employee });
-      
+      const merged = { ...user, employee };
+      setUser(merged);
+
       return { success: true, user };
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Login failed';
@@ -100,12 +131,12 @@ export const AuthProvider = ({ children }) => {
         currentPassword,
         newPassword
       });
-      
+
       // Update token if provided
       if (response.data.data.token) {
         setAuthToken(response.data.data.token);
       }
-      
+
       return { success: true };
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Password change failed';

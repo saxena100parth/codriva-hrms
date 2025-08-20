@@ -45,7 +45,7 @@ class HolidayService {
 
     Object.assign(holiday, updateData);
     holiday.updatedBy = updatedBy;
-    
+
     await holiday.save();
 
     return {
@@ -62,7 +62,7 @@ class HolidayService {
       throw new Error('Holiday not found');
     }
 
-    await holiday.remove();
+    await Holiday.findByIdAndDelete(holidayId);
 
     return {
       message: 'Holiday deleted successfully'
@@ -86,6 +86,13 @@ class HolidayService {
 
     if (filters.isOptional !== undefined) {
       query.isOptional = filters.isOptional === 'true';
+    }
+
+    // Filter based on user role and employment type
+    if (filters.userRole === 'employee' && filters.employmentType) {
+      query.applicableFor = {
+        $in: ['all', filters.employmentType]
+      };
     }
 
     const holidays = await Holiday.find(query)
@@ -124,13 +131,22 @@ class HolidayService {
   }
 
   // Get upcoming holidays
-  async getUpcomingHolidays(limit = 5) {
+  async getUpcomingHolidays(limit = 5, userRole = null, employmentType = null) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const holidays = await Holiday.find({
+    let query = {
       date: { $gte: today }
-    })
+    };
+
+    // Filter based on user role and employment type
+    if (userRole === 'employee' && employmentType) {
+      query.applicableFor = {
+        $in: ['all', employmentType]
+      };
+    }
+
+    const holidays = await Holiday.find(query)
       .sort('date')
       .limit(limit);
 

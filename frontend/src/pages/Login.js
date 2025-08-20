@@ -32,7 +32,9 @@ const Login = () => {
       if (result.user.role === 'employee' && !result.user.isOnboarded) {
         navigate('/onboarding');
       } else {
-        navigate('/');
+        const intended = localStorage.getItem('intended_path');
+        localStorage.removeItem('intended_path');
+        navigate(intended || '/');
       }
     } else {
       toast.error(result.error || 'Login failed');
@@ -44,14 +46,14 @@ const Login = () => {
       <div className="max-w-md w-full">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 gradient-primary rounded-full flex items-center justify-center mb-4 shadow-lg">
-            <span className="text-2xl font-bold text-white">HR</span>
+          <div className="mx-auto h-16 w-16 rounded-full flex items-center justify-center mb-4 shadow-lg" style={{ background: '#3b82f6' }}>
+            <span className="text-2xl font-bold text-white">C</span>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            Welcome Back
+            Codriva HRMS
           </h2>
           <p className="mt-2 text-sm text-gray-600 sm:text-base">
-            Sign in to your HRMS account
+            Sign in to continue
           </p>
         </div>
 

@@ -81,8 +81,8 @@ const EmployeeEdit = () => {
         );
     }
 
-    return (
-        <div className="max-w-4xl mx-auto p-6">
+      return (
+    <div className="w-full">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-semibold text-gray-900">Edit Employee</h1>
                 <div className="space-x-3">

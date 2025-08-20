@@ -20,7 +20,7 @@ const OnboardingForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({});
 
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm();
+  const { register, handleSubmit, formState: { errors }, watch } = useForm();
 
   const steps = [
     { id: 1, name: 'Personal Info', icon: UserCircleIcon },
@@ -104,7 +104,7 @@ const OnboardingForm = () => {
         taxId: data.taxId
       };
 
-      const result = await employeeService.submitOnboarding(formattedData);
+      await employeeService.submitOnboarding(formattedData);
       toast.success('Onboarding details submitted successfully!');
       navigate('/');
     } catch (error) {
@@ -121,7 +121,7 @@ const OnboardingForm = () => {
   };
 
   return (
-    <div className="container-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full">
       {/* Header */}
       <div className="gradient-primary rounded-lg p-6 sm:p-8 text-white mb-8 shadow-lg">
         <h1 className="text-2xl sm:text-3xl font-bold">Complete Your Onboarding</h1>
