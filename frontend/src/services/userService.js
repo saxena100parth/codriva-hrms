@@ -25,8 +25,17 @@ export const userService = {
     return response.data;
   },
 
-  // Toggle user status
+  // Toggle active status
   toggleUserStatus: async (id) => {
+    const response = await api.put(`/users/${id}/toggle-status`);
+    return response.data;
+  },
+
+  // Toggle user status
+  // Backwards compatibility alias
+  updateUserStatus: async (id, status) => {
+    // API exposes toggle only; call toggle if desired state differs.
+    // Caller should decide whether toggle needed; here we just call toggle.
     const response = await api.put(`/users/${id}/toggle-status`);
     return response.data;
   },

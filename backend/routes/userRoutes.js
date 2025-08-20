@@ -39,7 +39,7 @@ router.use(checkOnboarded);
 router.use(authorize('hr', 'admin'));
 
 // Routes
-router.get('/stats', authorize('admin'), getUserStats);
+router.get('/stats', authorize('admin', 'hr'), getUserStats);
 router.get('/search', searchUsers);
 router.get('/hr-list', getHRUsers);
 router.post('/hr', authorize('admin'), createHRValidation, validate, createHRUser);

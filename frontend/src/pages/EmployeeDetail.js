@@ -37,32 +37,39 @@ const EmployeeDetail = () => {
   };
 
   const handleStatusChange = async (newStatus) => {
+    const current = employee?.user?.isActive ? 'active' : 'inactive';
+    if (!employee?.user?._id) {
+      toast.error('User not found for this employee');
+      return;
+    }
+    if (newStatus === current) {
+      return; // no change needed
+    }
     try {
       setUpdating(true);
-      await userService.updateUserStatus(id, newStatus);
+      await userService.toggleUserStatus(employee.user._id);
       toast.success(`Employee status updated to ${newStatus}`);
-      fetchEmployee(); // Refresh data
+      await fetchEmployee();
     } catch (error) {
-      toast.error('Failed to update employee status');
+      toast.error(error.response?.data?.error || 'Failed to update employee status');
       console.error('Error updating status:', error);
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
+  const handleToggleActive = async () => {
+    if (!employee?.user?._id) {
+      toast.error('User not found for this employee');
       return;
     }
-
     try {
       setUpdating(true);
-      await userService.deleteUser(id);
-      toast.success('Employee deleted successfully');
-      navigate('/employees');
+      await userService.toggleUserStatus(employee.user._id);
+      toast.success(`Employee ${employee.user.isActive ? 'deactivated' : 'activated'} successfully`);
+      await fetchEmployee();
     } catch (error) {
-      toast.error('Failed to delete employee');
-      console.error('Error deleting employee:', error);
+      toast.error(error.response?.data?.error || 'Failed to update employee status');
     } finally {
       setUpdating(false);
     }
@@ -116,21 +123,20 @@ const EmployeeDetail = () => {
           <h2 className="text-xl font-semibold text-gray-900">Status & Actions</h2>
           <div className="flex space-x-3">
             <select
-              value={employee.status || 'active'}
+              value={employee?.user?.isActive ? 'active' : 'inactive'}
               onChange={(e) => handleStatusChange(e.target.value)}
               disabled={updating}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
             </select>
             <button
-              onClick={handleDelete}
+              onClick={handleToggleActive}
               disabled={updating}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+              className={`px-4 py-2 rounded-md text-white ${employee?.user?.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:opacity-50`}
             >
-              {updating ? 'Deleting...' : 'Delete Employee'}
+              {updating ? 'Updating...' : (employee?.user?.isActive ? 'Deactivate' : 'Activate')}
             </button>
           </div>
         </div>

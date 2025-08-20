@@ -108,7 +108,7 @@ ticketSchema.pre('save', async function(next) {
 });
 
 // Add indexes for better query performance
-ticketSchema.index({ ticketNumber: 1 });
+// ticketSchema.index({ ticketNumber: 1 });
 ticketSchema.index({ status: 1, priority: 1 });
 ticketSchema.index({ employee: 1, createdAt: -1 });
 

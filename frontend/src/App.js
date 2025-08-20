@@ -17,6 +17,7 @@ import Holidays from './pages/Holidays';
 import Profile from './pages/Profile';
 import Users from './pages/Users';
 import AdminCreateHR from './pages/AdminCreateHR';
+import EmployeeEdit from './pages/EmployeeEdit';
 
 // Components
 import Layout from './components/Layout';
@@ -88,6 +89,11 @@ function AppRoutes() {
         <Route path="/employees/:id" element={
           <ProtectedRoute roles={['hr', 'admin']}>
             <EmployeeDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/employees/:id/edit" element={
+          <ProtectedRoute roles={['hr', 'admin']}>
+            <EmployeeEdit />
           </ProtectedRoute>
         } />
         <Route path="/hr/invite" element={
