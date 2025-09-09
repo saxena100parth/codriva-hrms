@@ -1,17 +1,9 @@
 const authService = require('../services/authService');
 const asyncHandler = require('../utils/asyncHandler');
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Private (Admin only)
-exports.register = asyncHandler(async (req, res, next) => {
-  const result = await authService.register(req.body);
-
-  res.status(201).json({
-    success: true,
-    data: result
-  });
-});
+// ========================================
+// AUTHENTICATION CONTROLLERS
+// ========================================
 
 // @desc    Login user
 // @route   POST /api/auth/login
@@ -126,13 +118,94 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
 // @route   POST /api/auth/logout
 // @access  Private
 exports.logout = asyncHandler(async (req, res, next) => {
-  // In a stateless JWT system, logout is handled on the client side
-  // by removing the token. Here we just send a success response.
-  
   res.status(200).json({
     success: true,
     data: {
       message: 'Logged out successfully'
     }
+  });
+});
+
+// @desc    Mobile login with OTP
+// @route   POST /api/auth/mobile-login
+// @access  Public
+exports.mobileLogin = asyncHandler(async (req, res, next) => {
+  const { mobileNumber } = req.body;
+
+  if (!mobileNumber) {
+    return res.status(400).json({
+      success: false,
+      error: 'Mobile number is required'
+    });
+  }
+
+  const result = await authService.mobileLogin(mobileNumber);
+
+  res.status(200).json({
+    success: true,
+    data: result
+  });
+});
+
+// @desc    Verify OTP
+// @route   POST /api/auth/verify-otp
+// @access  Public
+exports.verifyOTP = asyncHandler(async (req, res, next) => {
+  const { mobileNumber, otp } = req.body;
+
+  if (!mobileNumber || !otp) {
+    return res.status(400).json({
+      success: false,
+      error: 'Mobile number and OTP are required'
+    });
+  }
+
+  const result = await authService.verifyOTP(mobileNumber, otp);
+
+  res.status(200).json({
+    success: true,
+    data: result
+  });
+});
+
+// @desc    Set initial password during onboarding
+// @route   POST /api/auth/set-onboarding-password
+// @access  Private (Employee during onboarding)
+exports.setOnboardingPassword = asyncHandler(async (req, res, next) => {
+  const { password } = req.body;
+
+  if (!password || password.length < 6) {
+    return res.status(400).json({
+      success: false,
+      error: 'Password must be at least 6 characters'
+    });
+  }
+
+  const result = await authService.setOnboardingPassword(req.user.id, password);
+
+  res.status(200).json({
+    success: true,
+    data: result
+  });
+});
+
+// @desc    Resend OTP
+// @route   POST /api/auth/resend-otp
+// @access  Public
+exports.resendOTP = asyncHandler(async (req, res, next) => {
+  const { mobileNumber } = req.body;
+
+  if (!mobileNumber) {
+    return res.status(400).json({
+      success: false,
+      error: 'Mobile number is required'
+    });
+  }
+
+  const result = await authService.resendOTP(mobileNumber);
+
+  res.status(200).json({
+    success: true,
+    data: result
   });
 });

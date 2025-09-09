@@ -3,29 +3,38 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Pages
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Employees from './pages/Employees';
-import EmployeeDetail from './pages/EmployeeDetail';
-import OnboardingForm from './pages/OnboardingForm';
-import HrReview from './pages/HrReview';
-import HrInvite from './pages/HrInvite';
-import Leaves from './pages/Leaves';
-import Tickets from './pages/Tickets';
-import Holidays from './pages/Holidays';
-import Profile from './pages/Profile';
-import Users from './pages/Users';
-import AdminCreateHR from './pages/AdminCreateHR';
-import EmployeeEdit from './pages/EmployeeEdit';
+// ========================================
+// PAGE IMPORTS
+// ========================================
+import Login from './pages/Login';                    // User authentication page
+import Dashboard from './pages/Dashboard';            // Main dashboard for all users
+import EmployeeDetail from './pages/EmployeeDetail';  // Employee profile view (HR/Admin)
+import OnboardingForm from './pages/OnboardingForm'; // Employee onboarding process
+import HrReview from './pages/HrReview';             // HR review of onboarding submissions
+import HrInvite from './pages/HrInvite';             // HR invitation management
+import Leaves from './pages/Leaves';                  // Leave management page
+import Tickets from './pages/Tickets';                // Support ticket management
+import Holidays from './pages/Holidays';              // Holiday calendar and management
+import Profile from './pages/Profile';                // User's own profile page
+import People from './pages/People';                  // People management (HR/Admin)
+import AdminCreateHR from './pages/AdminCreateHR';    // Admin HR user creation
+import EmployeeEdit from './pages/EmployeeEdit';      // Employee profile editing (HR/Admin)
+import ResetPassword from './pages/ResetPassword';    // Password reset page
+import ForgotPassword from './pages/ForgotPassword';  // Forgot password page
 
-// Components
-import Layout from './components/Layout';
+// ========================================
+// COMPONENT IMPORTS
+// ========================================
+import Layout from './components/Layout';             // Main layout wrapper with navigation
 
-// Protected Route Component
+// ========================================
+// PROTECTED ROUTE COMPONENT
+// ========================================
+// Wraps routes that require authentication and specific roles
 const ProtectedRoute = ({ children, roles = [] }) => {
   const { isAuthenticated, loading, hasRole, user } = useAuth();
 
+  // Show loading spinner while checking authentication
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -41,11 +50,12 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user needs to complete onboarding
-  if (user?.role === 'employee' && !user?.isOnboarded && !window.location.pathname.includes('/onboarding')) {
+  // Check if employee needs to complete onboarding
+  if (user?.role === 'EMPLOYEE' && !user?.isOnboarded && !window.location.pathname.includes('/onboarding')) {
     return <Navigate to="/onboarding" replace />;
   }
 
+  // Check if user has required role(s)
   if (roles.length > 0 && !hasRole(roles)) {
     return <Navigate to="/" replace />;
   }
@@ -53,87 +63,102 @@ const ProtectedRoute = ({ children, roles = [] }) => {
   return children;
 };
 
+// ========================================
+// MAIN ROUTING COMPONENT
+// ========================================
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/login" element={<Login />} />
+      {/* ======================================== */}
+      {/* PUBLIC ROUTES (No authentication required) */}
+      {/* ======================================== */}
+      <Route path="/login" element={<Login />} />                    // User login page
+      <Route path="/onboarding" element={<OnboardingForm />} />      // Employee onboarding (accessible via invitation)
+      <Route path="/reset-password" element={<ResetPassword />} />    // Password reset page
+      <Route path="/forgot-password" element={<ForgotPassword />} />  // Forgot password page
 
-      {/* Protected Routes */}
+      {/* ======================================== */}
+      {/* PROTECTED ROUTES (Authentication required) */}
+      {/* ======================================== */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        {/* Common Routes */}
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/holidays" element={<Holidays />} />
 
-        {/* Employee Routes */}
-        <Route path="/onboarding" element={
-          <ProtectedRoute roles={['employee']}>
-            <OnboardingForm />
-          </ProtectedRoute>
-        } />
+        {/* ======================================== */}
+        {/* COMMON ROUTES (All authenticated users) */}
+        {/* ======================================== */}
+        <Route path="/" element={<Dashboard />} />                   // Main dashboard
+        <Route path="/profile" element={<Profile />} />              // User's own profile
+        <Route path="/holidays" element={<Holidays />} />            // Holiday calendar
+
+        {/* ======================================== */}
+        {/* EMPLOYEE ROUTES (Employee, HR, Admin) */}
+        {/* ======================================== */}
         <Route path="/leaves" element={
-          <ProtectedRoute roles={['employee', 'hr', 'admin']}>
+          <ProtectedRoute roles={['EMPLOYEE', 'HR', 'ADMIN']}>
             <Leaves />
           </ProtectedRoute>
         } />
         <Route path="/tickets" element={
-          <ProtectedRoute roles={['employee', 'hr', 'admin']}>
+          <ProtectedRoute roles={['EMPLOYEE', 'HR', 'ADMIN']}>
             <Tickets />
           </ProtectedRoute>
         } />
 
-        {/* HR/Admin Routes */}
-        <Route path="/employees" element={
-          <ProtectedRoute roles={['hr', 'admin']}>
-            <Employees />
+        {/* ======================================== */}
+        {/* HR/ADMIN ROUTES (HR and Admin only) */}
+        {/* ======================================== */}
+        <Route path="/people" element={
+          <ProtectedRoute roles={['HR', 'ADMIN']}>
+            <People />
           </ProtectedRoute>
         } />
         <Route path="/employees/:id" element={
-          <ProtectedRoute roles={['hr', 'admin']}>
+          <ProtectedRoute roles={['HR', 'ADMIN']}>
             <EmployeeDetail />
           </ProtectedRoute>
         } />
         <Route path="/employees/:id/edit" element={
-          <ProtectedRoute roles={['hr', 'admin']}>
+          <ProtectedRoute roles={['HR', 'ADMIN']}>
             <EmployeeEdit />
           </ProtectedRoute>
         } />
         <Route path="/hr/invite" element={
-          <ProtectedRoute roles={['hr', 'admin']}>
+          <ProtectedRoute roles={['HR', 'ADMIN']}>
             <HrInvite />
           </ProtectedRoute>
         } />
         <Route path="/hr/review" element={
-          <ProtectedRoute roles={['hr', 'admin']}>
+          <ProtectedRoute roles={['HR', 'ADMIN']}>
             <HrReview />
           </ProtectedRoute>
         } />
-        <Route path="/users" element={
-          <ProtectedRoute roles={['hr', 'admin']}>
-            <Users />
-          </ProtectedRoute>
-        } />
 
-        {/* Admin Only Routes */}
+        {/* ======================================== */}
+        {/* ADMIN ONLY ROUTES (Admin only) */}
+        {/* ======================================== */}
         <Route path="/admin/create-hr" element={
-          <ProtectedRoute roles={['admin']}>
+          <ProtectedRoute roles={['ADMIN']}>
             <AdminCreateHR />
           </ProtectedRoute>
         } />
       </Route>
 
-      {/* Catch all route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* ======================================== */}
+      {/* CATCH ALL ROUTE */}
+      {/* ======================================== */}
+      <Route path="*" element={<Navigate to="/" replace />} />      // Redirect unknown routes to dashboard
     </Routes>
   );
 }
 
+// ========================================
+// MAIN APP COMPONENT
+// ========================================
 function App() {
   return (
     <Router>
       <AuthProvider>
         <AppRoutes />
+        {/* Global toast notifications */}
         <Toaster
           position="top-right"
           toastOptions={{

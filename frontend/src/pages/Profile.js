@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
-import { employeeService } from '../services/employeeService';
+import { userService } from '../services/userService';
 import toast from 'react-hot-toast';
 import {
   EyeIcon,
@@ -19,28 +19,32 @@ const Profile = () => {
   const { register: registerProfile, handleSubmit: handleProfileSubmit, formState: { errors: profileErrors }, reset: resetProfile } = useForm();
   const { register: registerPassword, handleSubmit: handlePasswordSubmit, formState: { errors: passwordErrors }, reset: resetPassword, watch } = useForm();
 
-  useEffect(() => {
-    if (user?.role === 'employee') {
-      fetchEmployeeProfile();
-    } else {
-      setLoading(false);
-    }
-  }, [user]); // fetchEmployeeProfile is stable
-
-  const fetchEmployeeProfile = async () => {
+  const fetchEmployeeProfile = useCallback(async () => {
     try {
-      const response = await employeeService.getMyProfile();
-      setEmployee(response.data);
+      // Use userService.getMyProfile() instead of employeeService.getMyProfile()
+      const response = await userService.getMyProfile();
+      setEmployee(response);
       resetProfile({
-        name: user?.name || '',
-        personalEmail: user?.personalEmail || response.data.personalEmail || ''
+        fullName: {
+          first: user?.fullName?.first || '',
+          last: user?.fullName?.last || ''
+        },
+        personalEmail: user?.personalEmail || response.personalEmail || ''
       });
     } catch (error) {
       console.error('Failed to fetch employee profile:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, resetProfile]);
+
+  useEffect(() => {
+    if (user?.role === 'EMPLOYEE') {
+      fetchEmployeeProfile();
+    } else {
+      setLoading(false);
+    }
+  }, [user, fetchEmployeeProfile]);
 
   const onProfileSubmit = async (data) => {
     const result = await updateProfile(data);
@@ -83,11 +87,13 @@ const Profile = () => {
         <div className="flex items-center w-full">
           <img
             className="h-20 w-20 rounded-full flex-shrink-0"
-            src={`https://ui-avatars.com/api/?name=${user?.name}&background=3b82f6&color=fff&size=200`}
+            src={`https://ui-avatars.com/api/?name=${user?.fullName?.first} ${user?.fullName?.last}&background=3b82f6&color=fff&size=200`}
             alt=""
           />
           <div className="ml-6 flex-1">
-            <h2 className="text-xl font-bold text-gray-900">{user?.name}</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {user?.fullName ? [user.fullName.first, user.fullName.middle, user.fullName.last].filter(Boolean).join(' ') : 'Unknown'}
+            </h2>
             <p className="text-sm text-gray-500">{user?.email}</p>
             <p className="text-sm text-gray-500 capitalize">{user?.role}</p>
             {employee?.employeeId && (
@@ -119,7 +125,7 @@ const Profile = () => {
             >
               Security
             </button>
-            {user?.role === 'employee' && (
+            {user?.role === 'EMPLOYEE' && (
               <button
                 onClick={() => setActiveTab('employment')}
                 className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'employment'
@@ -144,12 +150,23 @@ const Profile = () => {
                 <div className="mt-1">
                   <input
                     type="text"
-                    {...registerProfile('name', { required: 'Name is required' })}
-                    defaultValue={user?.name}
+                    {...registerProfile('fullName.first', { required: 'First name is required' })}
+                    defaultValue={user?.fullName?.first}
                     className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
                   />
-                  {profileErrors.name && (
-                    <p className="mt-1 text-sm text-red-600">{profileErrors.name.message}</p>
+                  {profileErrors.fullName?.first && (
+                    <p className="mt-1 text-sm text-red-600">{profileErrors.fullName.first.message}</p>
+                  )}
+                </div>
+                <div className="mt-1">
+                  <input
+                    type="text"
+                    {...registerProfile('fullName.last', { required: 'Last name is required' })}
+                    defaultValue={user?.fullName?.last}
+                    className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                  />
+                  {profileErrors.fullName?.last && (
+                    <p className="mt-1 text-sm text-red-600">{profileErrors.fullName.last.message}</p>
                   )}
                 </div>
               </div>
@@ -326,7 +343,7 @@ const Profile = () => {
           )}
 
           {/* Employment Details Tab (Employee Only) */}
-          {activeTab === 'employment' && user?.role === 'employee' && employee && (
+          {activeTab === 'employment' && user?.role === 'EMPLOYEE' && employee && (
             <div className="space-y-6 w-full">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>

@@ -5,14 +5,15 @@ class HolidayService {
   async createHoliday(holidayData, createdBy) {
     const { name, date, type, description, isOptional, applicableFor } = holidayData;
 
-    // Check if holiday already exists for the same date
+    // Check if holiday already exists for the same name and year
+    const year = new Date(date).getFullYear();
     const existingHoliday = await Holiday.findOne({
-      date: new Date(date),
-      name
+      name,
+      year
     });
 
     if (existingHoliday) {
-      throw new Error('Holiday already exists for this date');
+      throw new Error('Holiday with this name already exists for this year');
     }
 
     const holiday = await Holiday.create({
@@ -96,8 +97,8 @@ class HolidayService {
     }
 
     const holidays = await Holiday.find(query)
-      .populate('createdBy', 'name')
-      .populate('updatedBy', 'name')
+      .populate('createdBy', 'fullName')
+      .populate('updatedBy', 'fullName')
       .sort('date');
 
     // Group holidays by month for better display
@@ -120,8 +121,8 @@ class HolidayService {
   // Get single holiday
   async getHoliday(holidayId) {
     const holiday = await Holiday.findById(holidayId)
-      .populate('createdBy', 'name email')
-      .populate('updatedBy', 'name email');
+      .populate('createdBy', 'fullName email')
+      .populate('updatedBy', 'fullName email');
 
     if (!holiday) {
       throw new Error('Holiday not found');

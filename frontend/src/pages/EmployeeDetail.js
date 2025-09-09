@@ -37,8 +37,8 @@ const EmployeeDetail = () => {
   };
 
   const handleStatusChange = async (newStatus) => {
-    const current = employee?.user?.isActive ? 'active' : 'inactive';
-    if (!employee?.user?._id) {
+    const current = employee?.isActive ? 'active' : 'inactive';
+    if (!employee?._id) {
       toast.error('User not found for this employee');
       return;
     }
@@ -47,7 +47,7 @@ const EmployeeDetail = () => {
     }
     try {
       setUpdating(true);
-      await userService.toggleUserStatus(employee.user._id);
+      await userService.toggleUserStatus(employee._id);
       toast.success(`Employee status updated to ${newStatus}`);
       await fetchEmployee();
     } catch (error) {
@@ -59,14 +59,14 @@ const EmployeeDetail = () => {
   };
 
   const handleToggleActive = async () => {
-    if (!employee?.user?._id) {
+    if (!employee?._id) {
       toast.error('User not found for this employee');
       return;
     }
     try {
       setUpdating(true);
-      await userService.toggleUserStatus(employee.user._id);
-      toast.success(`Employee ${employee.user.isActive ? 'deactivated' : 'activated'} successfully`);
+      await userService.toggleUserStatus(employee._id);
+      toast.success(`Employee ${employee.isActive ? 'deactivated' : 'activated'} successfully`);
       await fetchEmployee();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update employee status');
@@ -123,7 +123,7 @@ const EmployeeDetail = () => {
           <h2 className="text-xl font-semibold text-gray-900">Status & Actions</h2>
           <div className="flex space-x-3">
             <select
-              value={employee?.user?.isActive ? 'active' : 'inactive'}
+              value={employee?.isActive ? 'active' : 'inactive'}
               onChange={(e) => handleStatusChange(e.target.value)}
               disabled={updating}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -134,9 +134,9 @@ const EmployeeDetail = () => {
             <button
               onClick={handleToggleActive}
               disabled={updating}
-              className={`px-4 py-2 rounded-md text-white ${employee?.user?.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:opacity-50`}
+              className={`px-4 py-2 rounded-md text-white ${employee?.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:opacity-50`}
             >
-              {updating ? 'Updating...' : (employee?.user?.isActive ? 'Deactivate' : 'Activate')}
+              {updating ? 'Updating...' : (employee?.isActive ? 'Deactivate' : 'Activate')}
             </button>
           </div>
         </div>

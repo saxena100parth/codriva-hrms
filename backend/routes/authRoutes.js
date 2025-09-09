@@ -1,60 +1,43 @@
 const express = require('express');
-const router = express.Router();
-const { body } = require('express-validator');
-const {
-  register,
-  login,
-  getMe,
-  forgotPassword,
-  resetPassword,
-  updateDetails,
-  changePassword,
-  logout
+const { login, getMe, updateDetails, changePassword, forgotPassword, resetPassword,
+  logout,  mobileLogin, verifyOTP,  resendOTP, setOnboardingPassword
 } = require('../controllers/authController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validation');
+const {
+  loginValidation,
+  updateDetailsValidation,
+  changePasswordValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
+  mobileLoginValidation,
+  verifyOTPValidation,
+  resendOTPValidation,
+  setOnboardingPasswordValidation
+} = require('../validations/authValidation');
 
-// Validation rules
-const registerValidation = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('name').notEmpty().trim().escape(),
-  body('role').isIn(['admin', 'hr', 'employee']).withMessage('Invalid role'),
-  body('personalEmail').optional().isEmail().normalizeEmail()
-];
+const router = express.Router();
 
-const loginValidation = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty()
-];
+// ========================================
+// AUTHENTICATION ROUTES
+// ========================================
+// Security Model: Only the default admin is created automatically.
+// All other users must be invited by admin/HR roles through the onboarding process.
+// No self-registration is allowed to maintain system security.
 
-const changePasswordValidation = [
-  body('currentPassword').notEmpty(),
-  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
-];
+// Public routes (no authentication required)
+router.post('/login', loginValidation, validate, login);                            // User login with email/password
+router.post('/forgotpassword', forgotPasswordValidation, validate, forgotPassword); // Send password reset email
+router.put('/resetpassword', resetPasswordValidation, validate, resetPassword);     // Reset password with token
+router.post('/mobile-login', mobileLoginValidation, validate, mobileLogin);         // Send OTP to mobile for onboarding
+router.post('/verify-otp', verifyOTPValidation, validate, verifyOTP);               // Verify OTP for mobile login
+router.post('/resend-otp', resendOTPValidation, validate, resendOTP);               // Resend OTP if expired
 
-const forgotPasswordValidation = [
-  body('email').isEmail().normalizeEmail()
-];
-
-const resetPasswordValidation = [
-  body('resetToken').notEmpty(),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-];
-
-const updateDetailsValidation = [
-  body('name').optional().notEmpty().trim().escape(),
-  body('personalEmail').optional().isEmail().normalizeEmail()
-];
-
-// Routes
-router.post('/register', protect, authorize('admin'), registerValidation, validate, register);
-router.post('/login', loginValidation, validate, login);
-router.post('/logout', protect, logout);
-router.get('/me', protect, getMe);
-router.put('/updatedetails', protect, updateDetailsValidation, validate, updateDetails);
-router.put('/changepassword', protect, changePasswordValidation, validate, changePassword);
-router.post('/forgotpassword', forgotPasswordValidation, validate, forgotPassword);
-router.put('/resetpassword', resetPasswordValidation, validate, resetPassword);
+// Protected routes (authentication required)
+router.get('/me', protect, getMe);                                                  // Get current user profile
+router.put('/updatedetails', protect, updateDetailsValidation, validate, updateDetails); // Update user profile details
+router.put('/changepassword', protect, changePasswordValidation, validate, changePassword); // Change password
+router.post('/set-onboarding-password', protect, setOnboardingPasswordValidation, validate, setOnboardingPassword); // Set initial password during onboarding
+router.post('/logout', protect, logout);                                           // Logout user
 
 module.exports = router;

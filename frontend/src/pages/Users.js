@@ -60,7 +60,7 @@ const Users = () => {
   const handleToggleStatus = async (userId) => {
     try {
       const result = await userService.toggleUserStatus(userId);
-      toast.success(result.data.message);
+      toast.success(result.message || 'User status updated successfully');
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update user status');
@@ -76,7 +76,7 @@ const Users = () => {
 
     try {
       const result = await userService.resetUserPassword(userId, password);
-      toast.success(result.data.message);
+      toast.success(result.message || 'Password reset successfully');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to reset password');
     }
@@ -193,11 +193,12 @@ const Users = () => {
                           {user.email}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                            user.role === 'hr' ? 'bg-blue-100 text-blue-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                            {user.role}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
+                            user.role === 'HR' ? 'bg-blue-100 text-blue-800' :
+                            user.role === 'EMPLOYEE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {user.role === 'ADMIN' ? 'Admin' :
+                             user.role === 'HR' ? 'HR' :
+                             user.role === 'EMPLOYEE' ? 'Employee' : user.role}
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">

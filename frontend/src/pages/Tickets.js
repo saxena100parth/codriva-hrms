@@ -351,8 +351,8 @@ const Tickets = () => {
                               </div>
                               <div className="text-sm text-gray-500">
                                 {ticket.category} • Created {formatDate(ticket.createdAt)}
-                                {(isHR || isAdmin) && ticket.employee && (
-                                  <span> • By {ticket.employee.fullName?.first} {ticket.employee.fullName?.last}</span>
+                                {(isHR || isAdmin) && ticket.user && (
+                                  <span> • By {ticket.user.name}</span>
                                 )}
                               </div>
                             </div>

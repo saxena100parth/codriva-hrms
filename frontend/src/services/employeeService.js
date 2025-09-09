@@ -1,72 +1,64 @@
 import api from './api';
 
 export const employeeService = {
-  // Get all employees
-  getEmployees: async (params = {}) => {
-    const response = await api.get('/employees', { params });
-    return response.data;
+  // Get employee profile
+  getEmployeeProfile: async (id) => {
+    const response = await api.get(`/users/${id}`);
+    return response.data.data;
   },
 
-  // Get single employee
-  getEmployee: async (id) => {
-    const response = await api.get(`/employees/${id}`);
-    return response.data.data; // return the employee object
+  // Update employee profile
+  updateEmployeeProfile: async (id, data) => {
+    const response = await api.put(`/users/${id}`, data);
+    return response.data.data;
   },
 
-  // Explicit alias used by EmployeeDetail
-  getEmployeeById: async (id) => {
-    const response = await api.get(`/employees/${id}`);
-    return response.data.data; // return the employee object
+  // Get employee leave summary
+  getEmployeeLeaveSummary: async () => {
+    const response = await api.get('/leaves/summary');
+    return response.data.data;
   },
 
-  // Get my profile (employee)
-  getMyProfile: async () => {
-    const response = await api.get('/employees/me');
-    return response.data;
+  // Get employee leaves
+  getEmployeeLeaves: async (params = {}) => {
+    const response = await api.get('/leaves', { params });
+    return response.data.data;
   },
 
-  // Update employee
-  updateEmployee: async (id, data) => {
-    const response = await api.put(`/employees/${id}`, data);
-    return response.data;
-  },
-
-  // Initiate onboarding
-  initiateOnboarding: async (data) => {
-    const response = await api.post('/employees/onboard', data);
-    return response.data;
+  // Get employee tickets
+  getEmployeeTickets: async (params = {}) => {
+    const response = await api.get('/tickets', { params });
+    return response.data.data;
   },
 
   // Submit onboarding details
   submitOnboarding: async (data) => {
-    const response = await api.post('/employees/onboarding/submit', data);
-    return response.data;
-  },
-
-  // Review onboarding
-  reviewOnboarding: async (id, decision, comments) => {
-    const response = await api.put(`/employees/${id}/onboarding/review`, {
-      decision,
-      comments
-    });
-    return response.data;
+    const response = await api.post('/users/onboarding/submit', data);
+    return response.data.data;
   },
 
   // Get onboarding status
-  getOnboardingStatus: async (id) => {
-    const response = await api.get(`/employees/${id}/onboarding`);
-    return response.data;
+  getOnboardingStatus: async () => {
+    const response = await api.get('/users/me');
+    return response.data.data.onboardingStatus;
   },
 
-  // Get pending onboardings
+  // Initiate onboarding (HR/Admin only)
+  initiateOnboarding: async (data) => {
+    console.log('employeeService.initiateOnboarding called with data:', data);
+    try {
+      const response = await api.post('/users/onboard', data);
+      console.log('employeeService.initiateOnboarding response:', response);
+      return response.data.data;
+    } catch (error) {
+      console.error('employeeService.initiateOnboarding error:', error);
+      throw error;
+    }
+  },
+
+  // Get pending onboardings (HR/Admin only)
   getPendingOnboardings: async () => {
-    const response = await api.get('/employees/onboarding/pending');
-    return response.data;
-  },
-
-  // Update leave balance
-  updateLeaveBalance: async (id, data) => {
-    const response = await api.put(`/employees/${id}/leave-balance`, data);
-    return response.data;
+    const response = await api.get('/users/onboarding/pending');
+    return response.data.data;
   }
 };

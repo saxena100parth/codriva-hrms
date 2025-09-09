@@ -29,7 +29,7 @@ const HrReview = () => {
     try {
       setLoading(true);
       const response = await employeeService.getPendingOnboardings();
-      setPendingOnboardings(response.data);
+      setPendingOnboardings(response);
     } catch (error) {
       toast.error('Failed to fetch pending onboardings');
       console.error(error);
@@ -57,7 +57,7 @@ const HrReview = () => {
         reviewDecision,
         reviewComments
       );
-      toast.success(result.data.message);
+      toast.success(result.message || 'Onboarding review submitted successfully');
       setReviewModal(false);
       setReviewComments('');
       fetchPendingOnboardings();
@@ -69,11 +69,16 @@ const HrReview = () => {
   };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    if (!date) return 'Not specified';
+    try {
+      return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
   };
 
   if (loading) {
@@ -110,18 +115,16 @@ const HrReview = () => {
                       <div className="flex-shrink-0">
                         <img
                           className="h-12 w-12 rounded-full"
-                          src={`https://ui-avatars.com/api/?name=${employee.fullName?.first || 'E'} ${employee.fullName?.last || 'E'}&background=3b82f6&color=fff`}
+                          src={`https://ui-avatars.com/api/?name=${employee.name || (employee.fullName ? [employee.fullName.first, employee.fullName.last].filter(Boolean).join(' ') : 'E')}&background=3b82f6&color=fff`}
                           alt=""
                         />
                       </div>
                       <div className="ml-4 min-w-0">
                         <div className="text-sm font-medium text-gray-900">
-                          {[employee.fullName?.first, employee.fullName?.middle, employee.fullName?.last]
-                            .filter(Boolean)
-                            .join(' ')}
+                          {employee.name || (employee.fullName ? [employee.fullName.first, employee.fullName.middle, employee.fullName.last].filter(Boolean).join(' ') : 'Unknown')}
                         </div>
                         <div className="text-sm text-gray-500 truncate">
-                          {employee.officialEmail}
+                          {employee.email || employee.officialEmail || 'No email'}
                         </div>
                       </div>
                     </div>
@@ -155,7 +158,7 @@ const HrReview = () => {
                   <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-3">
                     <div className="flex items-center text-sm text-gray-500">
                       <CalendarIcon className="flex-shrink-0 mr-1.5 text-gray-400" style={{ width: 16, height: 16 }} />
-                      Submitted: {formatDate(employee.onboardingSubmittedAt)}
+                      Submitted: {employee.onboardingSubmittedAt ? formatDate(employee.onboardingSubmittedAt) : 'Not specified'}
                     </div>
                     {employee.joiningDate && (
                       <div className="flex items-center text-sm text-gray-500">
@@ -163,7 +166,7 @@ const HrReview = () => {
                         Joining: {formatDate(employee.joiningDate)}
                       </div>
                     )}
-                    {employee.department && (
+                    {employee.department && employee.jobTitle && (
                       <div className="flex items-center text-sm text-gray-500">
                         <DocumentTextIcon className="flex-shrink-0 mr-1.5 text-gray-400" style={{ width: 16, height: 16 }} />
                         {employee.department} - {employee.jobTitle}
@@ -204,7 +207,7 @@ const HrReview = () => {
                       <p className="text-sm text-gray-500">
                         Are you sure you want to {reviewDecision} the onboarding for{' '}
                         <span className="font-medium">
-                          {selectedEmployee?.fullName?.first} {selectedEmployee?.fullName?.last}
+                          {selectedEmployee?.name || (selectedEmployee?.fullName ? [selectedEmployee.fullName.first, selectedEmployee.fullName.last].filter(Boolean).join(' ') : 'Unknown')}
                         </span>?
                       </p>
                     </div>

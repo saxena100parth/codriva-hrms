@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { body } = require('express-validator');
 const {
   createHoliday,
   updateHoliday,
@@ -14,53 +13,37 @@ const {
 } = require('../controllers/holidayController');
 const { protect, authorize, checkOnboarded } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validation');
+const {
+  createHolidayValidation,
+  updateHolidayValidation,
+  bulkCreateValidation,
+  copyHolidaysValidation
+} = require('../validations/holidayValidation');
 
-// Validation rules
-const createHolidayValidation = [
-  body('name').notEmpty().trim(),
-  body('date').isISO8601().withMessage('Valid date is required'),
-  body('type').optional().isIn(['national', 'regional', 'optional', 'company']),
-  body('description').optional().trim(),
-  body('isOptional').optional().isBoolean(),
-  body('applicableFor').optional().isArray()
-];
+// ========================================
+// HOLIDAY MANAGEMENT ROUTES
+// ========================================
 
-const updateHolidayValidation = [
-  body('name').optional().notEmpty().trim(),
-  body('date').optional().isISO8601(),
-  body('type').optional().isIn(['national', 'regional', 'optional', 'company']),
-  body('description').optional().trim(),
-  body('isOptional').optional().isBoolean(),
-  body('applicableFor').optional().isArray()
-];
-
-const bulkCreateValidation = [
-  body('holidays').isArray().withMessage('Holidays must be an array'),
-  body('holidays.*.name').notEmpty().trim(),
-  body('holidays.*.date').isISO8601()
-];
-
-const copyHolidaysValidation = [
-  body('fromYear').isInt({ min: 2020, max: 2030 }),
-  body('toYear').isInt({ min: 2020, max: 2030 })
-];
-
-// All routes are protected
+// All routes are protected (authentication required)
 router.use(protect);
 router.use(checkOnboarded);
 
-// Public routes (for all authenticated users)
-router.get('/upcoming', getUpcomingHolidays);
-router.get('/', getHolidays);
-router.get('/:id', getHoliday);
+// ========================================
+// PUBLIC ROUTES (for all authenticated users)
+// ========================================
+router.get('/upcoming', getUpcomingHolidays);                                    // Get upcoming holidays
+router.get('/', getHolidays);                                                     // Get all holidays
+router.get('/:id', getHoliday);                                                   // Get specific holiday details
 
-// HR/Admin only routes
-router.use(authorize('hr', 'admin'));
-router.post('/', createHolidayValidation, validate, createHoliday);
-router.put('/:id', updateHolidayValidation, validate, updateHoliday);
-router.delete('/:id', deleteHoliday);
-router.post('/bulk', bulkCreateValidation, validate, bulkCreateHolidays);
-router.post('/copy', copyHolidaysValidation, validate, copyHolidaysFromYear);
-router.get('/stats/overview', getHolidayStats);
+// ========================================
+// HR/ADMIN ONLY ROUTES
+// ========================================
+router.use(authorize('HR', 'ADMIN'));
+router.post('/', createHolidayValidation, validate, createHoliday);               // Create new holiday
+router.put('/:id', updateHolidayValidation, validate, updateHoliday);             // Update existing holiday
+router.delete('/:id', deleteHoliday);                                             // Delete holiday
+router.post('/bulk', bulkCreateValidation, validate, bulkCreateHolidays);         // Create multiple holidays at once
+router.post('/copy', copyHolidaysValidation, validate, copyHolidaysFromYear);     // Copy holidays from previous year
+router.get('/stats/overview', getHolidayStats);                                   // Get holiday statistics overview
 
 module.exports = router;

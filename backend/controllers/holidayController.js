@@ -41,18 +41,18 @@ exports.deleteHoliday = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get holidays
+// @desc    Get all holidays
 // @route   GET /api/holidays
 // @access  Private
 exports.getHolidays = asyncHandler(async (req, res, next) => {
   // Add user context to filters for employee-specific filtering
   const filters = { ...req.query };
 
-  if (req.user.role === 'employee') {
-    const Employee = require('../models/Employee');
-    const employee = await Employee.findOne({ user: req.user.id });
+  if (req.user.role === 'EMPLOYEE') {
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id);
     filters.userRole = 'employee';
-    filters.employmentType = employee?.employmentType;
+    filters.employmentType = user?.employmentType;
   }
 
   const result = await holidayService.getHolidays(filters);
@@ -83,10 +83,10 @@ exports.getUpcomingHolidays = asyncHandler(async (req, res, next) => {
 
   // Get user's employment type if they're an employee
   let employmentType = null;
-  if (req.user.role === 'employee') {
-    const Employee = require('../models/Employee');
-    const employee = await Employee.findOne({ user: req.user.id });
-    employmentType = employee?.employmentType;
+  if (req.user.role === 'EMPLOYEE') {
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id);
+    employmentType = user?.employmentType;
   }
 
   const holidays = await holidayService.getUpcomingHolidays(limit, req.user.role, employmentType);

@@ -49,10 +49,9 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: HomeIcon, show: true },
-    { name: 'Employees', href: '/employees', icon: UsersIcon, show: isAdmin || isHR },
+    { name: 'People', href: '/people', icon: UsersIcon, show: isAdmin || isHR },
     { name: 'Invite Employee', href: '/hr/invite', icon: UserGroupIcon, show: isAdmin || isHR },
     { name: 'Review Onboarding', href: '/hr/review', icon: DocumentTextIcon, show: isAdmin || isHR },
-    { name: 'Users', href: '/users', icon: UserCircleIcon, show: isAdmin || isHR },
     { name: 'Create HR', href: '/admin/create-hr', icon: UserCircleIcon, show: isAdmin },
     { name: 'Leaves', href: '/leaves', icon: CalendarIcon, show: true },
     { name: 'Tickets', href: '/tickets', icon: TicketIcon, show: true },

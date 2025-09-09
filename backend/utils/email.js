@@ -9,33 +9,101 @@ exports.sendEmail = async (options) => {
     text: options.text,
     html: options.html
   });
-  
+
   return true;
 };
 
-exports.sendOnboardingInvitation = async (email, temporaryPassword, personalEmail) => {
+exports.sendOnboardingInvitation = async (user, personalEmail, invitationUrl) => {
+  console.log('Invitation URL:', invitationUrl);
   const subject = 'Welcome to HRMS - Complete Your Onboarding';
   const text = `
     Welcome to our company!
     
     Your HR team has initiated your onboarding process.
     
-    Please use the following credentials to log in and complete your onboarding:
+    Please click the link below to complete your onboarding:
     
-    Login URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
-    Official Email: ${email}
-    Temporary Password: ${temporaryPassword}
+    ${invitationUrl}
     
-    This invitation will expire in 7 days.
+    Mobile Number: ${user.mobileNumber}
     
-    Please log in and complete your profile information.
+    ${user.inviteExpiryTime ? `This invitation will expire on: ${new Date(user.inviteExpiryTime).toLocaleDateString()}` : 'This invitation will expire in 7 days.'}
+    
+    Please complete your profile information and upload required documents.
     
     Best regards,
     HR Team
   `;
-  
+
   return await exports.sendEmail({
     to: personalEmail,
+    subject,
+    text
+  });
+};
+
+exports.sendOnboardingSubmittedNotification = async (user) => {
+  const subject = 'New Onboarding Submission - Action Required';
+  const text = `
+    A new employee has submitted their onboarding documents for review.
+    
+    Employee Details:
+    Name: ${user.fullName.first} ${user.fullName.last}
+    Mobile: ${user.mobileNumber}
+    Personal Email: ${user.personalEmail}
+    
+    Please review the submission in the HRMS portal.
+    
+    Best regards,
+    HRMS System
+  `;
+
+  // Send to HR/Admin users (you might want to implement this differently)
+  return await exports.sendEmail({
+    to: process.env.HR_EMAIL || 'hr@company.com',
+    subject,
+    text
+  });
+};
+
+exports.sendOnboardingApprovedNotification = async (user) => {
+  const subject = 'Onboarding Approved - Set Your Password';
+  const text = `
+    Congratulations! Your onboarding has been approved.
+    
+    You can now log in with your official email and set your password.
+    
+    ${user.email ? `
+    Official Email: ${user.email}
+    Login URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+    ` : 'Please contact HR to get your official email credentials.'}
+    
+    Best regards,
+    HR Team
+  `;
+
+  return await exports.sendEmail({
+    to: user.personalEmail,
+    subject,
+    text
+  });
+};
+
+exports.sendOnboardingRejectedNotification = async (user, comments) => {
+  const subject = 'Onboarding Documents Need Revision';
+  const text = `
+    Your onboarding documents have been reviewed and require some revisions.
+    
+    Feedback: ${comments || 'Please review and resubmit your documents.'}
+    
+    Please log in again and update your documents accordingly.
+    
+    Best regards,
+    HR Team
+  `;
+
+  return await exports.sendEmail({
+    to: user.personalEmail,
     subject,
     text
   });
@@ -57,7 +125,7 @@ exports.sendLeaveStatusUpdate = async (email, leaveDetails, status) => {
     Best regards,
     HR Team
   `;
-  
+
   return await exports.sendEmail({
     to: email,
     subject,
@@ -82,7 +150,7 @@ exports.sendTicketUpdate = async (email, ticket, update) => {
     Best regards,
     Support Team
   `;
-  
+
   return await exports.sendEmail({
     to: email,
     subject,

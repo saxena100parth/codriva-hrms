@@ -1,45 +1,11 @@
 const User = require('../models/User');
-const Employee = require('../models/Employee');
 const config = require('../config/config');
 const { sendEmail } = require('../utils/email');
 
 class AuthService {
-  // Register user (mainly for HR creation by admin)
-  async register(userData) {
-    const { email, password, role, name, personalEmail } = userData;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw new Error('User already exists with this email');
-    }
-
-    // Create user
-    const user = await User.create({
-      email,
-      password,
-      role,
-      name,
-      personalEmail
-    });
-
-    // If employee, create employee record
-    if (role === 'employee') {
-      await Employee.create({
-        user: user._id,
-        personalEmail,
-        officialEmail: email
-      });
-    }
-
-    // Remove password from output
-    user.password = undefined;
-
-    return {
-      user,
-      token: user.getSignedJwtToken()
-    };
-  }
+  // ========================================
+  // AUTHENTICATION METHODS
+  // ========================================
 
   // Login user
   async login(email, password) {
@@ -49,7 +15,6 @@ class AuthService {
     if (!user) {
       throw new Error('Invalid credentials');
     }
-    console.log('User found:', user);
 
     // Check if account is locked
     if (user.isLocked) {
@@ -70,22 +35,15 @@ class AuthService {
     }
 
     // Check if user is active
-    if (!user.isActive) {
-      throw new Error('Account is deactivated. Please contact administrator.');
+    if (user.status !== 'ACTIVE') {
+      throw new Error('Account is not active. Please contact administrator.');
     }
 
     // Remove password from output
     user.password = undefined;
 
-    // Get employee details if user is employee
-    let employeeDetails = null;
-    if (user.role === 'employee') {
-      employeeDetails = await Employee.findOne({ user: user._id });
-    }
-
     return {
       user,
-      employee: employeeDetails,
       token: user.getSignedJwtToken()
     };
   }
@@ -123,14 +81,14 @@ class AuthService {
       throw new Error('No user found with this email');
     }
 
-    // Generate reset token (in production, implement proper token generation)
+    // Generate reset token
     const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
     user.passwordResetToken = resetToken;
     user.passwordResetExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
     await user.save();
 
-    // Send email
+    // Send password reset email
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     await sendEmail({
@@ -174,24 +132,16 @@ class AuthService {
       throw new Error('User not found');
     }
 
-    let profile = { user };
-
-    // If employee, get employee details
-    if (user.role === 'employee') {
-      const employee = await Employee.findOne({ user: userId });
-      profile.employee = employee;
-    }
-
-    return profile;
+    return user;
   }
 
   // Update profile
   async updateProfile(userId, updateData) {
-    const { name, personalEmail } = updateData;
+    const { fullName, personalEmail } = updateData;
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { name, personalEmail },
+      { fullName, personalEmail },
       { new: true, runValidators: true }
     ).select('-password');
 
@@ -200,6 +150,146 @@ class AuthService {
     }
 
     return { user };
+  }
+
+  // Mobile login - send OTP
+  async mobileLogin(mobileNumber) {
+    const user = await User.findOne({ mobileNumber });
+
+    if (!user) {
+      throw new Error('No user found with this mobile number');
+    }
+
+    // Check if user is in onboarding process
+    if (user.onboardingStatus === 'COMPLETED') {
+      throw new Error('User has already completed onboarding. Please use email login.');
+    }
+
+    // Check if invitation has expired
+    if (user.inviteExpiryTime && user.inviteExpiryTime < Date.now()) {
+      throw new Error('Invitation has expired. Please contact HR for a new invitation.');
+    }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    user.otpCode = otp;
+    user.otpExpiresAt = otpExpiresAt;
+    await user.save();
+
+    // Send OTP via email (in production, this would be SMS)
+    await this.sendOTPEmail(user.personalEmail, otp);
+
+    return {
+      message: 'OTP sent successfully',
+      mobileNumber: user.mobileNumber
+    };
+  }
+
+  // Verify OTP
+  async verifyOTP(mobileNumber, otp) {
+    const user = await User.findOne({ mobileNumber });
+
+    if (!user) {
+      throw new Error('No user found with this mobile number');
+    }
+
+    // Check if OTP is valid and not expired
+    if (!user.otpCode || user.otpCode !== otp || !user.otpExpiresAt || user.otpExpiresAt < Date.now()) {
+      throw new Error('Invalid or expired OTP');
+    }
+
+    // Clear OTP after successful verification
+    user.otpCode = undefined;
+    user.otpExpiresAt = undefined;
+
+    // Update onboarding status to PENDING
+    if (user.onboardingStatus === 'INVITED') {
+      user.onboardingStatus = 'PENDING';
+    }
+
+    await user.save();
+
+    return {
+      user: user.toObject({ transform: (doc, ret) => { delete ret.password; return ret; } }),
+      token: user.getSignedJwtToken()
+    };
+  }
+
+  // Resend OTP
+  async resendOTP(mobileNumber) {
+    const user = await User.findOne({ mobileNumber });
+
+    if (!user) {
+      throw new Error('No user found with this mobile number');
+    }
+
+    // Check if invitation has expired
+    if (user.inviteExpiryTime && user.inviteExpiryTime < Date.now()) {
+      throw new Error('Invitation has expired. Please contact HR for a new invitation.');
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    user.otpCode = otp;
+    user.otpExpiresAt = otpExpiresAt;
+    await user.save();
+
+    // Send OTP via email
+    await this.sendOTPEmail(user.personalEmail, otp);
+
+    return {
+      message: 'OTP resent successfully',
+      mobileNumber: user.mobileNumber
+    };
+  }
+
+  // Send OTP email
+  async sendOTPEmail(email, otp) {
+    const subject = 'Your OTP for HRMS Login';
+    const text = `
+      Your OTP for HRMS login is: ${otp}
+      
+      This OTP will expire in 10 minutes.
+      
+      If you didn't request this OTP, please ignore this email.
+      
+      Best regards,
+      HRMS Team
+    `;
+
+    return await sendEmail({
+      to: email,
+      subject,
+      text
+    });
+  }
+
+  // Set initial password during onboarding
+  async setOnboardingPassword(userId, password) {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if user is in onboarding process
+    if (user.onboardingStatus !== 'APPROVED') {
+      throw new Error('Cannot set password at this stage. Onboarding must be approved first.');
+    }
+
+    // Set the new password
+    user.password = password;
+    user.passwordChangedAt = Date.now();
+    await user.save();
+
+    return {
+      message: 'Password set successfully',
+      user: user.toObject({ transform: (doc, ret) => { delete ret.password; return ret; } })
+    };
   }
 }
 

@@ -85,17 +85,16 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await axios.post('/auth/login', { email, password });
-      const { user, token, employee } = response.data.data;
+      const { user, token } = response.data.data;
 
       setAuthToken(token);
-      const merged = { ...user, employee };
-      setUser(merged);
+      setUser(user);
 
       return { success: true, user };
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Login failed';
       setError(errorMessage);
-      return { success: false, error: errorMessage };
+      throw err; // Re-throw to let component handle
     }
   };
 
@@ -144,6 +143,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update user data (for onboarding status updates)
+  const updateUser = (updatedUserData) => {
+    setUser(prevUser => ({ ...prevUser, ...updatedUserData }));
+  };
+
+
+
   const value = {
     user,
     loading,
@@ -152,11 +158,17 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     changePassword,
+    updateUser,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    isHR: user?.role === 'hr',
-    isEmployee: user?.role === 'employee',
-    hasRole: (roles) => roles.includes(user?.role)
+    isAdmin: user?.role === 'ADMIN',
+    isHR: user?.role === 'HR',
+    isEmployee: user?.role === 'EMPLOYEE',
+    hasRole: (roles) => {
+      // Ensure roles array contains uppercase values and compare with user role
+      const userRole = user?.role;
+      if (!userRole) return false;
+      return roles.some(role => role.toUpperCase() === userRole.toUpperCase());
+    }
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { body } = require('express-validator');
 const {
   createTicket,
   getTickets,
@@ -14,49 +13,37 @@ const {
 } = require('../controllers/ticketController');
 const { protect, authorize, checkOnboarded } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validation');
+const {
+  createTicketValidation,
+  updateTicketValidation,
+  assignTicketValidation,
+  addCommentValidation,
+  addRatingValidation
+} = require('../validations/ticketValidation');
 
-// Validation rules
-const createTicketValidation = [
-  body('category').isIn(['IT', 'HR', 'Finance', 'Admin', 'Other']),
-  body('priority').optional().isIn(['low', 'medium', 'high', 'urgent']),
-  body('subject').notEmpty().trim().isLength({ max: 100 }),
-  body('description').notEmpty().trim()
-];
+// ========================================
+// TICKET MANAGEMENT ROUTES
+// ========================================
 
-const updateTicketValidation = [
-  body('status').optional().isIn(['open', 'in-progress', 'resolved', 'closed', 'cancelled']),
-  body('resolution').optional().trim()
-];
-
-const assignTicketValidation = [
-  body('assignTo').isMongoId()
-];
-
-const addCommentValidation = [
-  body('comment').notEmpty().trim(),
-  body('isInternal').optional().isBoolean()
-];
-
-const addRatingValidation = [
-  body('rating').isInt({ min: 1, max: 5 }),
-  body('feedback').optional().trim()
-];
-
-// All routes are protected
+// All routes are protected (authentication required)
 router.use(protect);
 router.use(checkOnboarded);
 
-// HR/Admin routes
-router.get('/stats', authorize('hr', 'admin'), getTicketStats);
-router.get('/assigned', authorize('hr', 'admin'), getMyAssignedTickets);
+// ========================================
+// HR/ADMIN ROUTES
+// ========================================
+router.get('/stats', authorize('HR', 'ADMIN'), getTicketStats);                   // Get ticket statistics
+router.get('/assigned', authorize('HR', 'ADMIN'), getMyAssignedTickets);          // Get tickets assigned to current HR/Admin user
 
-// Common routes
-router.post('/', authorize('employee'), createTicketValidation, validate, createTicket);
-router.get('/', getTickets);
-router.get('/:id', getTicket);
-router.put('/:id', authorize('hr', 'admin'), updateTicketValidation, validate, updateTicket);
-router.put('/:id/assign', authorize('hr', 'admin'), assignTicketValidation, validate, assignTicket);
-router.post('/:id/comments', addCommentValidation, validate, addComment);
-router.post('/:id/rating', authorize('employee'), addRatingValidation, validate, addRating);
+// ========================================
+// COMMON ROUTES (accessible to all authenticated users)
+// ========================================
+router.post('/', authorize('EMPLOYEE'), createTicketValidation, validate, createTicket); // Create new support ticket
+router.get('/', getTickets);                                                      // Get list of tickets (filtered by user role)
+router.get('/:id', getTicket);                                                    // Get specific ticket details
+router.put('/:id', authorize('HR', 'ADMIN'), updateTicketValidation, validate, updateTicket); // Update ticket details
+router.put('/:id/assign', authorize('HR', 'ADMIN'), assignTicketValidation, validate, assignTicket); // Assign ticket to HR/Admin
+router.post('/:id/comments', addCommentValidation, validate, addComment);         // Add comment to ticket
+router.post('/:id/rating', authorize('EMPLOYEE'), addRatingValidation, validate, addRating); // Rate ticket resolution
 
 module.exports = router;

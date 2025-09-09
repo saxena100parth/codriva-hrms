@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const ticketSchema = new mongoose.Schema({
-  employee: {
+  user: { // Changed from employee to user
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Employee',
+    ref: 'User', // Changed from Employee to User
     required: true
   },
   ticketNumber: {
@@ -12,13 +12,13 @@ const ticketSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['IT', 'HR', 'Finance', 'Admin', 'Other'],
+    enum: ['IT', 'HR', 'FINANCE', 'ADMIN', 'OTHER'],
     required: [true, 'Please select a category']
   },
   priority: {
     type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
+    enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
+    default: 'MEDIUM'
   },
   subject: {
     type: String,
@@ -33,8 +33,8 @@ const ticketSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['open', 'in-progress', 'resolved', 'closed', 'cancelled'],
-    default: 'open'
+    enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'CANCELLED'],
+    default: 'OPEN'
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
@@ -51,7 +51,7 @@ const ticketSchema = new mongoose.Schema({
   },
   attachments: [{
     filename: String,
-    path: String,
+    url: String,
     uploadedAt: {
       type: Date,
       default: Date.now
@@ -91,7 +91,7 @@ const ticketSchema = new mongoose.Schema({
 });
 
 // Generate ticket number before saving
-ticketSchema.pre('save', async function(next) {
+ticketSchema.pre('save', async function (next) {
   if (!this.ticketNumber) {
     const date = new Date();
     const year = date.getFullYear();
@@ -110,6 +110,6 @@ ticketSchema.pre('save', async function(next) {
 // Add indexes for better query performance
 // ticketSchema.index({ ticketNumber: 1 });
 ticketSchema.index({ status: 1, priority: 1 });
-ticketSchema.index({ employee: 1, createdAt: -1 });
+ticketSchema.index({ user: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

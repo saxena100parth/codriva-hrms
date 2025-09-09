@@ -493,9 +493,9 @@ const Leaves = () => {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
                             {leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1)} Leave
-                            {(isHR || isAdmin) && leave.employee && (
+                            {(isHR || isAdmin) && leave.user && (
                               <span className="ml-2 text-gray-500">
-                                - {leave.employee.fullName?.first} {leave.employee.fullName?.last}
+                                - {leave.user.name}
                               </span>
                             )}
                           </div>

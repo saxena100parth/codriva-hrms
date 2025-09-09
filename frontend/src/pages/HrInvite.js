@@ -3,19 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { employeeService } from '../services/employeeService';
 import toast from 'react-hot-toast';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const HrInvite = () => {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
 
   const onSubmit = async (data) => {
     try {
+      console.log('Submitting onboarding data:', data);
       const result = await employeeService.initiateOnboarding(data);
-      toast.success(result.data.message);
-      navigate('/employees');
+      console.log('Onboarding result:', result);
+      toast.success(result.message || 'Employee onboarding initiated successfully');
+      navigate('/people');
     } catch (error) {
+      console.error('Onboarding error:', error);
+      console.error('Error response:', error.response);
       toast.error(error.response?.data?.error || 'Failed to initiate onboarding');
     }
   };
@@ -49,13 +52,13 @@ const HrInvite = () => {
           </div>
 
           <div>
-            <label htmlFor="personalEmail" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="personal_email" className="block text-sm font-medium text-gray-700">
               Personal Email
             </label>
             <div className="mt-1">
               <input
                 type="email"
-                {...register('personalEmail', {
+                {...register('personal_email', {
                   required: 'Personal email is required',
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -65,8 +68,8 @@ const HrInvite = () => {
                 className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
                 placeholder="personal@email.com"
               />
-              {errors.personalEmail && (
-                <p className="mt-1 text-sm text-red-600">{errors.personalEmail.message}</p>
+              {errors.personal_email && (
+                <p className="mt-1 text-sm text-red-600">{errors.personal_email.message}</p>
               )}
             </div>
             <p className="mt-1 text-xs text-gray-500">
@@ -75,14 +78,33 @@ const HrInvite = () => {
           </div>
 
           <div>
-            <label htmlFor="officialEmail" className="block text-sm font-medium text-gray-700">
-              Official Email
+            <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700">
+              Phone Number
+            </label>
+            <div className="mt-1">
+              <input
+                type="tel"
+                {...register('phone_number', { required: 'Phone number is required' })}
+                className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                placeholder="+1234567890"
+              />
+              {errors.phone_number && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone_number.message}</p>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Employee will use this number to log in with OTP.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Official Email (Optional)
             </label>
             <div className="mt-1">
               <input
                 type="email"
-                {...register('officialEmail', {
-                  required: 'Official email is required',
+                {...register('email', {
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                     message: 'Invalid email address'
@@ -91,49 +113,28 @@ const HrInvite = () => {
                 className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
                 placeholder="employee@company.com"
               />
-              {errors.officialEmail && (
-                <p className="mt-1 text-sm text-red-600">{errors.officialEmail.message}</p>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
               )}
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              This will be the employee's login email.
+              Optional. Employee can set this up later during onboarding.
             </p>
           </div>
 
           <div>
-            <label htmlFor="temporaryPassword" className="block text-sm font-medium text-gray-700">
-              Temporary Password
+            <label htmlFor="invite_expiry_time" className="block text-sm font-medium text-gray-700">
+              Invitation Expiry Time (Optional)
             </label>
-            <div className="mt-1 relative">
+            <div className="mt-1">
               <input
-                type={showPassword ? 'text' : 'password'}
-                {...register('temporaryPassword', {
-                  required: 'Temporary password is required',
-                  minLength: {
-                    value: 6,
-                    message: 'Password must be at least 6 characters'
-                  }
-                })}
-                className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full pr-10 sm:text-sm border-gray-300 rounded-md"
-                placeholder="Enter temporary password"
+                type="datetime-local"
+                {...register('invite_expiry_time')}
+                className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
               />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
-              {errors.temporaryPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.temporaryPassword.message}</p>
-              )}
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              The employee will be required to change this password on first login.
+              Leave empty to use default 7-day expiry. Employee must complete onboarding before this time.
             </p>
           </div>
 
@@ -146,7 +147,7 @@ const HrInvite = () => {
               </div>
               <div className="ml-3 flex-1 md:flex md:justify-between">
                 <p className="text-sm text-blue-700">
-                  An invitation email will be sent to the employee's personal email with login instructions.
+                  An invitation email will be sent to the employee's personal email. They will log in using their mobile number and OTP.
                 </p>
               </div>
             </div>
@@ -155,7 +156,7 @@ const HrInvite = () => {
           <div className="bg-gray-50 px-4 py-3 text-right sm:px-6 -mx-4 -my-5 sm:-mx-6 sm:-my-6 sm:rounded-b-lg">
             <button
               type="button"
-              onClick={() => navigate('/employees')}
+              onClick={() => navigate('/people')}
               className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               Cancel

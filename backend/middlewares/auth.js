@@ -36,20 +36,27 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    // Check if user is active
-    if (!req.user.isActive) {
+    // Check if user is active (not DRAFT, INACTIVE, or DELETED)
+    if (req.user.status !== 'ACTIVE') {
       return res.status(401).json({
         success: false,
-        error: 'User account is deactivated'
+        error: `User account is ${req.user.status.toLowerCase()}. Please contact administrator.`
       });
     }
 
     // Check if user changed password after token was issued
-    if (req.user.changedPasswordAfter(decoded.iat)) {
-      return res.status(401).json({
-        success: false,
-        error: 'User recently changed password. Please log in again'
-      });
+    if (req.user.passwordChangedAt) {
+      const changedTimestamp = parseInt(
+        req.user.passwordChangedAt.getTime() / 1000,
+        10
+      );
+
+      if (decoded.iat < changedTimestamp) {
+        return res.status(401).json({
+          success: false,
+          error: 'User recently changed password. Please log in again'
+        });
+      }
     }
 
     next();
@@ -74,20 +81,70 @@ exports.authorize = (...roles) => {
   };
 };
 
-// Check if user is onboarded (for employees)
+// Check if user is onboarded (for employees and HR)
 exports.checkOnboarded = async (req, res, next) => {
-  if (req.user.role === 'employee' && !req.user.isOnboarded) {
-    // Allow access to onboarding routes
-    const onboardingRoutes = ['/api/onboarding/submit', '/api/auth/change-password'];
-    const isOnboardingRoute = onboardingRoutes.some(route => req.path.includes(route));
-    
-    if (!isOnboardingRoute) {
+  // Only check onboarding for EMPLOYEE and HR roles
+  if ((req.user.role === 'EMPLOYEE' || req.user.role === 'HR') &&
+    req.user.onboardingStatus !== 'COMPLETED') {
+
+    // Allow access to onboarding and essential routes
+    const allowedRoutes = [
+      '/api/users/onboarding/submit',
+      '/api/users/onboarding/review',
+      '/api/auth/change-password',
+      '/api/auth/profile',
+      '/api/auth/verify-otp',
+      '/api/auth/resend-otp',
+      '/api/auth/mobile-login'
+    ];
+
+    const isAllowedRoute = allowedRoutes.some(route => req.path.includes(route));
+
+    if (!isAllowedRoute) {
       return res.status(403).json({
         success: false,
         error: 'Please complete your onboarding process first',
-        onboardingRequired: true
+        onboardingRequired: true,
+        currentStatus: req.user.onboardingStatus
       });
     }
+  }
+  next();
+};
+
+// Check if user has completed onboarding (for specific operations)
+exports.requireOnboarded = async (req, res, next) => {
+  if (req.user.role === 'EMPLOYEE' || req.user.role === 'HR') {
+    if (req.user.onboardingStatus !== 'COMPLETED') {
+      return res.status(403).json({
+        success: false,
+        error: 'Onboarding must be completed before accessing this resource',
+        onboardingRequired: true,
+        currentStatus: req.user.onboardingStatus
+      });
+    }
+  }
+  next();
+};
+
+// Check if user can manage other users (ADMIN or HR)
+exports.canManageUsers = (req, res, next) => {
+  if (!['ADMIN', 'HR'].includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Insufficient permissions to manage users'
+    });
+  }
+  next();
+};
+
+// Check if user is admin
+exports.requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({
+      success: false,
+      error: 'Admin access required'
+    });
   }
   next();
 };
@@ -98,41 +155,83 @@ const rateLimitStore = new Map();
 exports.rateLimit = (windowMs = 15 * 60 * 1000, max = 5) => {
   return (req, res, next) => {
     const key = `${req.ip}:${req.path}`;
-    const now = Date.now();
-    
+    const currentTime = Date.now();
+
     // Clean up old entries
     for (const [k, v] of rateLimitStore.entries()) {
-      if (v.resetTime < now) {
+      if (v.resetTime < currentTime) {
         rateLimitStore.delete(k);
       }
     }
-    
+
     const record = rateLimitStore.get(key);
-    
+
     if (!record) {
       rateLimitStore.set(key, {
         count: 1,
-        resetTime: now + windowMs
+        resetTime: currentTime + windowMs
       });
       return next();
     }
-    
-    if (record.resetTime < now) {
+
+    if (record.resetTime < currentTime) {
       record.count = 1;
-      record.resetTime = now + windowMs;
+      record.resetTime = currentTime + windowMs;
       return next();
     }
-    
-    if (record.count >= max) {
-      const retryAfter = Math.ceil((record.resetTime - now) / 1000);
-      return res.status(429).json({
+  };
+};
+
+// OTP-based authentication middleware
+exports.authenticateOTP = async (req, res, next) => {
+  const { mobileNumber, otp } = req.body;
+
+  if (!mobileNumber || !otp) {
+    return res.status(400).json({
+      success: false,
+      error: 'Mobile number and OTP are required'
+    });
+  }
+
+  try {
+    // Find user by mobile number
+    const user = await User.findOne({ mobileNumber });
+
+    if (!user) {
+      return res.status(401).json({
         success: false,
-        error: 'Too many requests, please try again later',
-        retryAfter
+        error: 'No user found with this mobile number'
       });
     }
-    
-    record.count++;
+
+    // Check if OTP is valid and not expired
+    if (!user.otpCode || user.otpCode !== otp || !user.otpExpiresAt || user.otpExpiresAt < Date.now()) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired OTP'
+      });
+    }
+
+    // Check if invitation has expired
+    if (user.inviteExpiryTime && user.inviteExpiryTime < Date.now()) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invitation has expired. Please contact HR for a new invitation.'
+      });
+    }
+
+    // Clear OTP after successful verification
+    user.otpCode = undefined;
+    user.otpExpiresAt = undefined;
+    await user.save();
+
+    // Set user in request
+    req.user = user;
     next();
-  };
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Authentication failed'
+    });
+  }
 };

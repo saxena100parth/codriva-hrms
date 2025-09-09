@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import usePersistentState from '../hooks/usePersistentState';
@@ -18,13 +18,56 @@ import { userService } from '../services/userService';
 import { leaveService } from '../services/leaveService';
 import { ticketService } from '../services/ticketService';
 import { holidayService } from '../services/holidayService';
-import { employeeService } from '../services/employeeService';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user, isAdmin, isHR, isEmployee } = useAuth();
   const [stats, setStats] = usePersistentState('dashboardStats', null);
   const [loading, setLoading] = useState(true);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      if (isAdmin || isHR) {
+        // Fetch admin/HR stats
+        const [userStats, ticketStats, pendingOnboardings, pendingLeaves] = await Promise.all([
+          userService.getUserStats(),
+          ticketService.getTicketStats(),
+          userService.getPendingOnboardings(),
+          leaveService.getPendingLeaves()
+        ]);
+
+        setStats({
+          users: userStats,
+          tickets: ticketStats,
+          pendingOnboardings: pendingOnboardings.length,
+          pendingLeaves: pendingLeaves.length
+        });
+      } else {
+        // Fetch employee stats
+        const [leaveSummary, myTickets, upcomingHolidays] = await Promise.all([
+          leaveService.getLeaveSummary(),
+          ticketService.getTickets({ page: 1, limit: 5 }),
+          holidayService.getUpcomingHolidays(3)
+        ]);
+
+        setStats({
+          leaves: leaveSummary,
+          tickets: myTickets.tickets,
+          holidays: upcomingHolidays
+        });
+      }
+
+      // Cache the fetch timestamp
+      localStorage.setItem('dashboard_lastFetch', Date.now().toString());
+    } catch (error) {
+      toast.error('Failed to fetch dashboard data');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAdmin, isHR, setStats]);
 
   useEffect(() => {
     // Check if we have cached data that's less than 5 minutes old
@@ -37,51 +80,7 @@ const Dashboard = () => {
     } else {
       setLoading(false);
     }
-  }, [stats]);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-
-      if (isAdmin || isHR) {
-        // Fetch admin/HR stats
-        const [userStats, ticketStats, pendingOnboardings, pendingLeaves] = await Promise.all([
-          userService.getUserStats(),
-          ticketService.getTicketStats(),
-          employeeService.getPendingOnboardings(),
-          leaveService.getPendingLeaves()
-        ]);
-
-        setStats({
-          users: userStats,
-          tickets: ticketStats.data,
-          pendingOnboardings: (pendingOnboardings.data || pendingOnboardings).length,
-          pendingLeaves: (pendingLeaves.data || pendingLeaves).length
-        });
-      } else {
-        // Fetch employee stats
-        const [leaveSummary, myTickets, upcomingHolidays] = await Promise.all([
-          leaveService.getLeaveSummary(),
-          ticketService.getTickets({ page: 1, limit: 5 }),
-          holidayService.getUpcomingHolidays(3)
-        ]);
-
-        setStats({
-          leaves: leaveSummary.data || leaveSummary,
-          tickets: myTickets.data.tickets,
-          holidays: upcomingHolidays.data
-        });
-      }
-
-      // Cache the fetch timestamp
-      localStorage.setItem('dashboard_lastFetch', Date.now().toString());
-    } catch (error) {
-      toast.error('Failed to fetch dashboard data');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [stats, fetchDashboardData]);
 
   // Loading state
   if (loading) {
@@ -215,11 +214,11 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               <StatCard
                 title="Total Employees"
-                value={stats?.users?.byRole?.employee?.total || 0}
-                subtitle={`${stats?.users?.byRole?.employee?.active || 0} active`}
+                value={stats?.users?.byRole?.EMPLOYEE?.total || 0}
+                subtitle={`${stats?.users?.byRole?.EMPLOYEE?.active || 0} active`}
                 icon={UsersIcon}
                 color="blue"
-                link={{ href: "/employees", text: "View all employees" }}
+                link={{ href: "/people", text: "View all people" }}
               />
 
               <StatCard

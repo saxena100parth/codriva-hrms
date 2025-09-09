@@ -2,12 +2,12 @@ import api from './api';
 
 export const leaveService = {
   // Apply for leave
-  applyLeave: async (data) => {
-    const response = await api.post('/leaves', data);
+  applyLeave: async (leaveData) => {
+    const response = await api.post('/leaves', leaveData);
     return response.data.data;
   },
 
-  // Get leaves
+  // Get all leaves
   getLeaves: async (params = {}) => {
     const response = await api.get('/leaves', { params });
     return response.data.data;
@@ -19,7 +19,7 @@ export const leaveService = {
     return response.data.data;
   },
 
-  // Update leave status
+  // Update leave status (HR/Admin)
   updateLeaveStatus: async (id, status, rejectionReason = '') => {
     const response = await api.put(`/leaves/${id}/status`, {
       status,
@@ -34,7 +34,7 @@ export const leaveService = {
     return response.data.data;
   },
 
-  // Add comment
+  // Add comment to leave
   addComment: async (id, comment) => {
     const response = await api.post(`/leaves/${id}/comments`, { comment });
     return response.data.data;
@@ -46,7 +46,7 @@ export const leaveService = {
     return response.data.data;
   },
 
-  // Get pending leaves
+  // Get pending leaves (HR/Admin)
   getPendingLeaves: async () => {
     const response = await api.get('/leaves/pending');
     return response.data.data;

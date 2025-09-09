@@ -1,18 +1,18 @@
 const Leave = require('../models/Leave');
-const Employee = require('../models/Employee');
+const User = require('../models/User');
 const Holiday = require('../models/Holiday');
 const { sendLeaveStatusUpdate } = require('../utils/email');
 
 class LeaveService {
   // Apply for leave (Employee)
   async applyLeave(userId, leaveData) {
-    const employee = await Employee.findOne({ user: userId });
-    
-    if (!employee) {
-      throw new Error('Employee record not found');
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error('User not found');
     }
 
-    if (employee.onboardingStatus !== 'approved') {
+    if (user.onboardingStatus !== 'COMPLETED') {
       throw new Error('Please complete onboarding before applying for leave');
     }
 
@@ -21,11 +21,11 @@ class LeaveService {
     // Validate dates
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     if (start < new Date()) {
       throw new Error('Start date cannot be in the past');
     }
-    
+
     if (end < start) {
       throw new Error('End date must be after start date');
     }
@@ -34,15 +34,15 @@ class LeaveService {
     const numberOfDays = await this.calculateLeaveDays(start, end);
 
     // Check leave balance
-    const availableLeave = employee.leaveBalance[leaveType] - employee.leavesTaken[leaveType];
+    const availableLeave = user.leaveBalance[leaveType] - user.leavesTaken[leaveType];
     if (numberOfDays > availableLeave) {
       throw new Error(`Insufficient ${leaveType} leave balance. Available: ${availableLeave} days`);
     }
 
     // Check for overlapping leaves
     const overlappingLeave = await Leave.findOne({
-      employee: employee._id,
-      status: { $in: ['pending', 'approved'] },
+      user: userId,
+      status: { $in: ['PENDING', 'APPROVED'] },
       $or: [
         { startDate: { $lte: end }, endDate: { $gte: start } }
       ]
@@ -54,7 +54,7 @@ class LeaveService {
 
     // Create leave request
     const leave = await Leave.create({
-      employee: employee._id,
+      user: userId,
       leaveType,
       startDate: start,
       endDate: end,
@@ -65,7 +65,7 @@ class LeaveService {
     });
 
     return {
-      leave: await leave.populate('employee', 'employeeId displayName'),
+      leave: await leave.populate('user', 'employeeId fullName'),
       message: 'Leave request submitted successfully'
     };
   }
@@ -76,23 +76,20 @@ class LeaveService {
     const query = {};
 
     // If employee, only show their own leaves
-    if (userRole === 'employee') {
-      const employee = await Employee.findOne({ user: userId });
-      if (employee) {
-        query.employee = employee._id;
-      }
+    if (userRole === 'EMPLOYEE') {
+      query.user = userId;
     }
 
     // Apply filters
     if (filters.status) query.status = filters.status;
     if (filters.leaveType) query.leaveType = filters.leaveType;
-    if (filters.employeeId) query.employee = filters.employeeId;
+    if (filters.employeeId) query.user = filters.employeeId;
     if (filters.fromDate) query.startDate = { $gte: new Date(filters.fromDate) };
     if (filters.toDate) query.endDate = { $lte: new Date(filters.toDate) };
 
     const leaves = await Leave.find(query)
-      .populate('employee', 'employeeId fullName officialEmail')
-      .populate('approvedBy', 'name')
+      .populate('user', 'employeeId fullName email')
+      .populate('approvedBy', 'fullName')
       .sort('-createdAt')
       .skip(skip)
       .limit(limit);
@@ -113,18 +110,17 @@ class LeaveService {
   // Get single leave
   async getLeave(leaveId, userRole, userId) {
     const leave = await Leave.findById(leaveId)
-      .populate('employee', 'employeeId fullName officialEmail')
-      .populate('approvedBy', 'name')
-      .populate('comments.user', 'name role');
+      .populate('user', 'employeeId fullName email')
+      .populate('approvedBy', 'fullName')
+      .populate('comments.user', 'fullName role');
 
     if (!leave) {
       throw new Error('Leave request not found');
     }
 
     // If employee, check if it's their own leave
-    if (userRole === 'employee') {
-      const employee = await Employee.findOne({ user: userId });
-      if (!employee || leave.employee._id.toString() !== employee._id.toString()) {
+    if (userRole === 'EMPLOYEE') {
+      if (leave.user._id.toString() !== userId.toString()) {
         throw new Error('Not authorized to view this leave request');
       }
     }
@@ -135,30 +131,30 @@ class LeaveService {
   // Update leave status (HR/Admin)
   async updateLeaveStatus(leaveId, status, approvedBy, rejectionReason = '') {
     const leave = await Leave.findById(leaveId)
-      .populate('employee', 'user');
+      .populate('user', 'fullName email');
 
     if (!leave) {
       throw new Error('Leave request not found');
     }
 
-    if (leave.status !== 'pending') {
+    if (leave.status !== 'PENDING') {
       throw new Error('Only pending leaves can be updated');
     }
 
-    leave.status = status;
+    leave.status = status.toUpperCase();
     leave.approvedBy = approvedBy;
     leave.approvedAt = new Date();
 
-    if (status === 'rejected') {
+    if (status.toUpperCase() === 'REJECTED') {
       leave.rejectionReason = rejectionReason;
     }
 
     await leave.save();
 
     // Send email notification
-    const employee = await Employee.findById(leave.employee._id).populate('user');
-    if (employee && employee.user) {
-      await sendLeaveStatusUpdate(employee.user.email, leave, status);
+    const user = await User.findById(leave.user._id);
+    if (user) {
+      await sendLeaveStatusUpdate(user.email, leave, status);
     }
 
     return {
@@ -169,34 +165,29 @@ class LeaveService {
 
   // Cancel leave (Employee)
   async cancelLeave(leaveId, userId) {
-    const employee = await Employee.findOne({ user: userId });
-    if (!employee) {
-      throw new Error('Employee record not found');
-    }
-
     const leave = await Leave.findOne({
       _id: leaveId,
-      employee: employee._id
+      user: userId
     });
 
     if (!leave) {
       throw new Error('Leave request not found');
     }
 
-    if (leave.status === 'cancelled') {
+    if (leave.status === 'CANCELLED') {
       throw new Error('Leave is already cancelled');
     }
 
-    if (leave.status === 'rejected') {
+    if (leave.status === 'REJECTED') {
       throw new Error('Cannot cancel rejected leave');
     }
 
     // Check if leave has already started
-    if (leave.status === 'approved' && new Date(leave.startDate) < new Date()) {
+    if (leave.status === 'APPROVED' && new Date(leave.startDate) < new Date()) {
       throw new Error('Cannot cancel leave that has already started');
     }
 
-    leave.status = 'cancelled';
+    leave.status = 'CANCELLED';
     await leave.save();
 
     return {
@@ -221,17 +212,17 @@ class LeaveService {
     await leave.save();
 
     return {
-      leave: await leave.populate('comments.user', 'name role'),
+      leave: await leave.populate('comments.user', 'fullName role'),
       message: 'Comment added successfully'
     };
   }
 
   // Get leave summary for employee
   async getLeaveSummary(userId) {
-    const employee = await Employee.findOne({ user: userId });
+    const user = await User.findById(userId);
 
-    if (!employee) {
-      throw new Error('Employee record not found');
+    if (!user) {
+      throw new Error('User record not found');
     }
 
     const currentYear = new Date().getFullYear();
@@ -240,8 +231,8 @@ class LeaveService {
 
     // Get approved leaves for current year
     const approvedLeaves = await Leave.find({
-      employee: employee._id,
-      status: 'approved',
+      user: user._id,
+      status: 'APPROVED',
       startDate: { $gte: yearStart, $lte: yearEnd }
     });
 
@@ -259,14 +250,14 @@ class LeaveService {
     });
 
     return {
-      balance: employee.leaveBalance,
+      balance: user.leaveBalance,
       taken: leavesByType,
       available: {
-        annual: employee.leaveBalance.annual - leavesByType.annual,
-        sick: employee.leaveBalance.sick - leavesByType.sick,
-        personal: employee.leaveBalance.personal - leavesByType.personal,
-        maternity: employee.leaveBalance.maternity - leavesByType.maternity,
-        paternity: employee.leaveBalance.paternity - leavesByType.paternity
+        annual: user.leaveBalance.annual - leavesByType.annual,
+        sick: user.leaveBalance.sick - leavesByType.sick,
+        personal: user.leaveBalance.personal - leavesByType.personal,
+        maternity: user.leaveBalance.maternity - leavesByType.maternity,
+        paternity: user.leaveBalance.paternity - leavesByType.paternity
       },
       year: currentYear
     };
@@ -276,10 +267,10 @@ class LeaveService {
   async calculateLeaveDays(startDate, endDate) {
     let count = 0;
     const current = new Date(startDate);
-    
+
     while (current <= endDate) {
       const dayOfWeek = current.getDay();
-      
+
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         // Check if it's a holiday
@@ -288,17 +279,17 @@ class LeaveService {
           count++;
         }
       }
-      
+
       current.setDate(current.getDate() + 1);
     }
-    
+
     return count;
   }
 
   // Get pending leaves for HR
   async getPendingLeaves() {
-    const leaves = await Leave.find({ status: 'pending' })
-      .populate('employee', 'employeeId fullName officialEmail')
+    const leaves = await Leave.find({ status: 'PENDING' })
+      .populate('user', 'employeeId fullName email')
       .sort('createdAt');
 
     return leaves;

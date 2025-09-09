@@ -4,52 +4,43 @@ export const userService = {
   // Get all users
   getUsers: async (params = {}) => {
     const response = await api.get('/users', { params });
-    return response.data;
+    return response.data.data;
   },
 
   // Get single user
   getUser: async (id) => {
     const response = await api.get(`/users/${id}`);
-    return response.data;
+    return response.data.data;
   },
 
-  // Create HR user
-  createHRUser: async (data) => {
-    const response = await api.post('/users/hr', data);
-    return response.data;
+  // Get current user profile
+  getMyProfile: async () => {
+    const response = await api.get('/users/me');
+    return response.data.data;
   },
 
   // Update user
   updateUser: async (id, data) => {
     const response = await api.put(`/users/${id}`, data);
-    return response.data;
-  },
-
-  // Toggle active status
-  toggleUserStatus: async (id) => {
-    const response = await api.put(`/users/${id}/toggle-status`);
-    return response.data;
+    return response.data.data;
   },
 
   // Toggle user status
-  // Backwards compatibility alias
-  updateUserStatus: async (id, status) => {
-    // API exposes toggle only; call toggle if desired state differs.
-    // Caller should decide whether toggle needed; here we just call toggle.
+  toggleUserStatus: async (id) => {
     const response = await api.put(`/users/${id}/toggle-status`);
-    return response.data;
+    return response.data.data;
   },
 
   // Reset user password
   resetUserPassword: async (id, password) => {
     const response = await api.put(`/users/${id}/reset-password`, { password });
-    return response.data;
+    return response.data.data;
   },
 
   // Get user stats
   getUserStats: async () => {
     const response = await api.get('/users/stats');
-    return response.data.data; // unwrap {success,data}
+    return response.data.data;
   },
 
   // Search users
@@ -57,12 +48,51 @@ export const userService = {
     const params = { q: query };
     if (role) params.role = role;
     const response = await api.get('/users/search', { params });
-    return response.data;
+    return response.data.data;
   },
 
   // Get HR users list
   getHRUsers: async () => {
     const response = await api.get('/users/hr-list');
-    return response.data;
+    return response.data.data;
+  },
+
+  // Change user role (Admin only)
+  changeUserRole: async (id, role) => {
+    const response = await api.put(`/users/${id}/role`, { role });
+    return response.data.data;
+  },
+
+  // Initiate employee onboarding
+  initiateOnboarding: async (data) => {
+    const response = await api.post('/users/onboard', data);
+    return response.data.data;
+  },
+
+  // Submit onboarding details
+  submitOnboarding: async (data) => {
+    const response = await api.post('/users/onboarding/submit', data);
+    return response.data.data;
+  },
+
+  // Get pending onboardings
+  getPendingOnboardings: async () => {
+    const response = await api.get('/users/onboarding/pending');
+    return response.data.data;
+  },
+
+  // Review onboarding
+  reviewOnboarding: async (id, decision, comments) => {
+    const response = await api.put(`/users/${id}/onboarding/review`, {
+      decision,
+      comments
+    });
+    return response.data.data;
+  },
+
+  // Update leave balance
+  updateLeaveBalance: async (id, data) => {
+    const response = await api.put(`/users/${id}/leave-balance`, data);
+    return response.data.data;
   }
 };

@@ -1,41 +1,39 @@
 const Ticket = require('../models/Ticket');
-const Employee = require('../models/Employee');
 const User = require('../models/User');
 const { sendTicketUpdate } = require('../utils/email');
 
 class TicketService {
   // Create ticket (Employee)
   async createTicket(userId, ticketData) {
-    const employee = await Employee.findOne({ user: userId });
-    
-    if (!employee) {
-      throw new Error('Employee record not found');
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error('User not found');
     }
 
-    if (employee.onboardingStatus !== 'approved') {
+    if (user.onboardingStatus !== 'COMPLETED') {
       throw new Error('Please complete onboarding before raising tickets');
     }
 
     const { category, priority, subject, description, attachments } = ticketData;
 
-    // Create ticket
+    // Create ticket - now associated directly with user instead of employee
     const ticket = await Ticket.create({
-      employee: employee._id,
+      user: userId,
       category,
-      priority: priority || 'medium',
+      priority: priority || 'MEDIUM',
       subject,
       description,
       attachments
     });
 
     // Send notification
-    const user = await User.findById(userId);
     if (user) {
       await sendTicketUpdate(user.email, ticket, 'created');
     }
 
     return {
-      ticket: await ticket.populate('employee', 'employeeId displayName'),
+      ticket: await ticket.populate('user', 'employeeId fullName'),
       message: 'Ticket created successfully'
     };
   }
@@ -46,11 +44,8 @@ class TicketService {
     const query = {};
 
     // If employee, only show their own tickets
-    if (userRole === 'employee') {
-      const employee = await Employee.findOne({ user: userId });
-      if (employee) {
-        query.employee = employee._id;
-      }
+    if (userRole === 'EMPLOYEE') {
+      query.user = userId;
     }
 
     // Apply filters
@@ -67,9 +62,9 @@ class TicketService {
     }
 
     const tickets = await Ticket.find(query)
-      .populate('employee', 'employeeId fullName officialEmail')
-      .populate('assignedTo', 'name')
-      .populate('resolvedBy', 'name')
+      .populate('user', 'employeeId fullName email')
+      .populate('assignedTo', 'fullName')
+      .populate('resolvedBy', 'fullName')
       .sort('-createdAt')
       .skip(skip)
       .limit(limit);
@@ -90,19 +85,18 @@ class TicketService {
   // Get single ticket
   async getTicket(ticketId, userRole, userId) {
     const ticket = await Ticket.findById(ticketId)
-      .populate('employee', 'employeeId fullName officialEmail')
-      .populate('assignedTo', 'name email')
-      .populate('resolvedBy', 'name')
-      .populate('comments.user', 'name role');
+      .populate('user', 'employeeId fullName email')
+      .populate('assignedTo', 'fullName email')
+      .populate('resolvedBy', 'fullName')
+      .populate('comments.user', 'fullName role');
 
     if (!ticket) {
       throw new Error('Ticket not found');
     }
 
     // If employee, check if it's their own ticket
-    if (userRole === 'employee') {
-      const employee = await Employee.findOne({ user: userId });
-      if (!employee || ticket.employee._id.toString() !== employee._id.toString()) {
+    if (userRole === 'EMPLOYEE') {
+      if (ticket.user._id.toString() !== userId.toString()) {
         throw new Error('Not authorized to view this ticket');
       }
     }
@@ -122,9 +116,9 @@ class TicketService {
 
     // Update fields
     if (status) {
-      ticket.status = status;
-      
-      if (status === 'resolved' || status === 'closed') {
+      ticket.status = status.toUpperCase();
+
+      if (status.toUpperCase() === 'RESOLVED' || status.toUpperCase() === 'CLOSED') {
         ticket.resolvedBy = updatedBy;
         ticket.resolvedAt = new Date();
         if (resolution) {
@@ -140,13 +134,13 @@ class TicketService {
     await ticket.save();
 
     // Send notification
-    const employee = await Employee.findById(ticket.employee).populate('user');
-    if (employee && employee.user) {
-      await sendTicketUpdate(employee.user.email, ticket, `Status changed to ${status}`);
+    const user = await User.findById(ticket.user);
+    if (user) {
+      await sendTicketUpdate(user.email, ticket, `Status changed to ${status}`);
     }
 
     return {
-      ticket: await ticket.populate(['employee', 'assignedTo', 'resolvedBy']),
+      ticket: await ticket.populate(['user', 'assignedTo', 'resolvedBy']),
       message: 'Ticket updated successfully'
     };
   }
@@ -161,24 +155,24 @@ class TicketService {
 
     // Verify assignee is HR or Admin
     const assignee = await User.findById(assignToUserId);
-    if (!assignee || !['hr', 'admin'].includes(assignee.role)) {
+    if (!assignee || !['HR', 'ADMIN'].includes(assignee.role)) {
       throw new Error('Tickets can only be assigned to HR or Admin users');
     }
 
     ticket.assignedTo = assignToUserId;
-    ticket.status = 'in-progress';
-    
+    ticket.status = 'IN_PROGRESS';
+
     // Add to comments
     ticket.comments.push({
       user: assignedBy,
-      comment: `Ticket assigned to ${assignee.name}`,
+      comment: `Ticket assigned to ${assignee.fullName.first} ${assignee.fullName.last}`,
       isInternal: true
     });
 
     await ticket.save();
 
     return {
-      ticket: await ticket.populate(['employee', 'assignedTo']),
+      ticket: await ticket.populate(['user', 'assignedTo']),
       message: 'Ticket assigned successfully'
     };
   }
@@ -193,9 +187,8 @@ class TicketService {
 
     // Check permissions
     const user = await User.findById(userId);
-    if (user.role === 'employee') {
-      const employee = await Employee.findOne({ user: userId });
-      if (!employee || ticket.employee.toString() !== employee._id.toString()) {
+    if (user.role === 'EMPLOYEE') {
+      if (ticket.user.toString() !== userId.toString()) {
         throw new Error('Not authorized to comment on this ticket');
       }
       isInternal = false; // Employees can't add internal comments
@@ -210,29 +203,23 @@ class TicketService {
     await ticket.save();
 
     return {
-      ticket: await ticket.populate('comments.user', 'name role'),
+      ticket: await ticket.populate('comments.user', 'fullName role'),
       message: 'Comment added successfully'
     };
   }
 
   // Add rating and feedback (Employee)
   async addRating(ticketId, userId, rating, feedback) {
-    const employee = await Employee.findOne({ user: userId });
-    
-    if (!employee) {
-      throw new Error('Employee record not found');
-    }
-
     const ticket = await Ticket.findOne({
       _id: ticketId,
-      employee: employee._id
+      user: userId
     });
 
     if (!ticket) {
       throw new Error('Ticket not found');
     }
 
-    if (ticket.status !== 'resolved' && ticket.status !== 'closed') {
+    if (ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED') {
       throw new Error('Can only rate resolved or closed tickets');
     }
 
@@ -283,7 +270,7 @@ class TicketService {
     const resolutionTime = await Ticket.aggregate([
       {
         $match: {
-          status: { $in: ['resolved', 'closed'] },
+          status: { $in: ['RESOLVED', 'CLOSED'] },
           resolvedAt: { $exists: true }
         }
       },
@@ -345,7 +332,7 @@ class TicketService {
     }
 
     const tickets = await Ticket.find(query)
-      .populate('employee', 'employeeId fullName')
+      .populate('user', 'employeeId fullName')
       .sort('-createdAt');
 
     return tickets;

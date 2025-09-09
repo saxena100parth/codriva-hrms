@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const leaveSchema = new mongoose.Schema({
-  employee: {
+  user: { // Changed from employee to user
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Employee',
+    ref: 'User', // Changed from Employee to User
     required: true
   },
   leaveType: {
@@ -30,8 +30,8 @@ const leaveSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected', 'cancelled'],
-    default: 'pending'
+    enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'],
+    default: 'PENDING'
   },
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -69,50 +69,50 @@ const leaveSchema = new mongoose.Schema({
 });
 
 // Validate end date is after start date
-leaveSchema.pre('save', function(next) {
+leaveSchema.pre('save', function (next) {
   if (this.endDate < this.startDate) {
     next(new Error('End date must be after start date'));
   }
-  
+
   // Calculate number of days if not provided
   if (!this.numberOfDays) {
     const diffTime = Math.abs(this.endDate - this.startDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     this.numberOfDays = diffDays;
   }
-  
+
   next();
 });
 
-// Update employee leave balance when leave is approved
-leaveSchema.post('save', async function(doc) {
+// Update user leave balance when leave is approved
+leaveSchema.post('save', async function (doc) {
   if (doc.status === 'approved' && !doc.wasApproved) {
-    const Employee = mongoose.model('Employee');
-    const employee = await Employee.findById(doc.employee);
-    
-    if (employee) {
-      employee.leavesTaken[doc.leaveType] += doc.numberOfDays;
-      await employee.save();
+    const User = mongoose.model('User'); // Changed from Employee to User
+    const user = await User.findById(doc.user); // Changed from employee to user
+
+    if (user) {
+      user.leavesTaken[doc.leaveType] += doc.numberOfDays;
+      await user.save();
     }
   }
 });
 
 // Restore leave balance when approved leave is cancelled
-leaveSchema.pre('save', async function(next) {
+leaveSchema.pre('save', async function (next) {
   if (this.isModified('status')) {
     const oldDoc = await this.constructor.findById(this._id);
-    if (oldDoc && oldDoc.status === 'approved' && this.status === 'cancelled') {
-      const Employee = mongoose.model('Employee');
-      const employee = await Employee.findById(this.employee);
-      
-      if (employee) {
-        employee.leavesTaken[this.leaveType] -= this.numberOfDays;
-        await employee.save();
+    if (oldDoc && oldDoc.status === 'APPROVED' && this.status === 'CANCELLED') {
+      const User = mongoose.model('User'); // Changed from Employee to User
+      const user = await User.findById(this.user); // Changed from employee to user
+
+      if (user) {
+        user.leavesTaken[this.leaveType] -= this.numberOfDays;
+        await user.save();
       }
     }
-    
+
     // Mark if it was just approved for post hook
-    if (oldDoc && oldDoc.status !== 'approved' && this.status === 'approved') {
+    if (oldDoc && oldDoc.status !== 'APPROVED' && this.status === 'APPROVED') {
       this.wasApproved = true;
     }
   }

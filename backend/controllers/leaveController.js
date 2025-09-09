@@ -18,7 +18,7 @@ exports.applyLeave = asyncHandler(async (req, res, next) => {
 // @access  Private
 exports.getLeaves = asyncHandler(async (req, res, next) => {
   const { page = 1, limit = 10, ...filters } = req.query;
-  
+
   const result = await leaveService.getLeaves(
     filters,
     req.user.role,
@@ -55,14 +55,14 @@ exports.getLeave = asyncHandler(async (req, res, next) => {
 exports.updateLeaveStatus = asyncHandler(async (req, res, next) => {
   const { status, rejectionReason } = req.body;
 
-  if (!status || !['approved', 'rejected'].includes(status)) {
+  if (!status || !['APPROVED', 'REJECTED'].includes(status.toUpperCase())) {
     return res.status(400).json({
       success: false,
-      error: 'Please provide a valid status (approved/rejected)'
+      error: 'Please provide a valid status (APPROVED/REJECTED)'
     });
   }
 
-  if (status === 'rejected' && !rejectionReason) {
+  if (status.toUpperCase() === 'REJECTED' && !rejectionReason) {
     return res.status(400).json({
       success: false,
       error: 'Please provide a reason for rejection'
