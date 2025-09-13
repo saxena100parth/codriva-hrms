@@ -1,0 +1,461 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import ticketService from '../services/ticketService';
+import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import {
+    TicketIcon,
+    PlusIcon,
+    CheckCircleIcon,
+    XCircleIcon,
+    ClockIcon,
+    ChevronDownIcon,
+    ChevronUpIcon,
+    ExclamationTriangleIcon,
+    ChatBubbleLeftRightIcon
+} from '@heroicons/react/24/outline';
+
+const Tickets = () => {
+    const { user, isEmployee, isHR, isAdmin } = useAuth();
+    const [tickets, setTickets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [expandedTickets, setExpandedTickets] = useState([]);
+    const [filter, setFilter] = useState('all');
+    const [assignModal, setAssignModal] = useState({ show: false, ticket: null });
+    const [assignTo, setAssignTo] = useState('');
+
+    const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm();
+
+    useEffect(() => {
+        fetchTickets();
+    }, [filter]);
+
+    const fetchTickets = async () => {
+        try {
+            setLoading(true);
+            const params = filter !== 'all' ? { status: filter } : {};
+            const data = await ticketService.getTickets(params);
+            setTickets(data.tickets || data);
+        } catch (error) {
+            toast.error('Failed to fetch tickets');
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onSubmit = async (data) => {
+        try {
+            await ticketService.createTicket(data);
+            toast.success('Ticket created successfully');
+            reset();
+            setShowCreateForm(false);
+            fetchTickets();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Failed to create ticket');
+        }
+    };
+
+    const handleAssignTicket = async () => {
+        if (!assignTo) {
+            toast.error('Please select a user to assign to');
+            return;
+        }
+
+        try {
+            await ticketService.assignTicket(assignModal.ticket._id, assignTo);
+            toast.success('Ticket assigned successfully');
+            setAssignModal({ show: false, ticket: null });
+            setAssignTo('');
+            fetchTickets();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Failed to assign ticket');
+        }
+    };
+
+    const toggleExpandTicket = (ticketId) => {
+        setExpandedTickets(prev =>
+            prev.includes(ticketId)
+                ? prev.filter(id => id !== ticketId)
+                : [...prev, ticketId]
+        );
+    };
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'open':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        <ClockIcon className="w-3 h-3 mr-1" />
+                        Open
+                    </span>
+                );
+            case 'in_progress':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <ClockIcon className="w-3 h-3 mr-1" />
+                        In Progress
+                    </span>
+                );
+            case 'resolved':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <CheckCircleIcon className="w-3 h-3 mr-1" />
+                        Resolved
+                    </span>
+                );
+            case 'closed':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <XCircleIcon className="w-3 h-3 mr-1" />
+                        Closed
+                    </span>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const getPriorityBadge = (priority) => {
+        switch (priority) {
+            case 'high':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <ExclamationTriangleIcon className="w-3 h-3 mr-1" />
+                        High
+                    </span>
+                );
+            case 'medium':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        <ExclamationTriangleIcon className="w-3 h-3 mr-1" />
+                        Medium
+                    </span>
+                );
+            case 'low':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <ExclamationTriangleIcon className="w-3 h-3 mr-1" />
+                        Low
+                    </span>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const formatDate = (date) => {
+        return new Date(date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    return (
+        <div className="w-full">
+            <div className="sm:flex sm:items-center">
+                <div className="sm:flex-auto">
+                    <h1 className="text-2xl font-semibold text-gray-900">Support Tickets</h1>
+                    <p className="mt-2 text-sm text-gray-700">
+                        {isEmployee ? 'Create and track your support tickets' : 'Manage and resolve support tickets'}
+                    </p>
+                </div>
+                {isEmployee && (
+                    <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+                        <button
+                            onClick={() => setShowCreateForm(!showCreateForm)}
+                            className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:w-auto"
+                        >
+                            <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+                            Create Ticket
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Create Ticket Form */}
+            {showCreateForm && isEmployee && (
+                <div className="mt-6 bg-white shadow rounded-lg p-6">
+                    <h2 className="text-lg font-medium text-gray-900 mb-4">Create New Ticket</h2>
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Category</label>
+                                <select
+                                    {...register('category', { required: 'Category is required' })}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                >
+                                    <option value="">Select category</option>
+                                    <option value="IT">IT Support</option>
+                                    <option value="HR">HR Support</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="General">General</option>
+                                </select>
+                                {errors.category && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Priority</label>
+                                <select
+                                    {...register('priority', { required: 'Priority is required' })}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                >
+                                    <option value="">Select priority</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                                {errors.priority && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.priority.message}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Subject</label>
+                            <input
+                                type="text"
+                                {...register('subject', { required: 'Subject is required' })}
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                placeholder="Brief description of the issue"
+                            />
+                            {errors.subject && (
+                                <p className="mt-1 text-sm text-red-600">{errors.subject.message}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Description</label>
+                            <textarea
+                                {...register('description', { required: 'Description is required' })}
+                                rows={4}
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                placeholder="Please provide detailed information about the issue..."
+                            />
+                            {errors.description && (
+                                <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowCreateForm(false);
+                                    reset();
+                                }}
+                                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSubmitting ? 'Creating...' : 'Create Ticket'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* Filter Tabs */}
+            <div className="mt-6 border-b border-gray-200">
+                <nav className="-mb-px flex space-x-8">
+                    {['all', 'open', 'in_progress', 'resolved', 'closed'].map((status) => (
+                        <button
+                            key={status}
+                            onClick={() => setFilter(status)}
+                            className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm capitalize ${filter === status
+                                ? 'border-primary-500 text-primary-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                        >
+                            {status.replace('_', ' ')}
+                        </button>
+                    ))}
+                </nav>
+            </div>
+
+            {/* Tickets List */}
+            <div className="mt-6">
+                {loading ? (
+                    <div className="text-center py-4">
+                        <div className="inline-flex items-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                            <span className="ml-2">Loading...</span>
+                        </div>
+                    </div>
+                ) : tickets.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-lg">
+                        <TicketIcon className="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No tickets found</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                            {filter === 'all' ? 'No tickets found.' : `No ${filter} tickets.`}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                        <ul className="divide-y divide-gray-200">
+                            {tickets.map((ticket) => (
+                                <li key={ticket._id}>
+                                    <div className="px-4 py-4 sm:px-6">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0">
+                                                    <TicketIcon className="h-8 w-8 text-gray-400" />
+                                                </div>
+                                                <div className="ml-4">
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {ticket.subject}
+                                                        <span className="ml-2 text-gray-500">#{ticket.ticketNumber}</span>
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {ticket.category} • {formatDate(ticket.createdAt)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                {getStatusBadge(ticket.status)}
+                                                {getPriorityBadge(ticket.priority)}
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); toggleExpandTicket(ticket._id); }}
+                                                    className="relative z-10 text-gray-400 hover:text-gray-500"
+                                                >
+                                                    {expandedTickets.includes(ticket._id) ? (
+                                                        <ChevronUpIcon className="h-5 w-5" />
+                                                    ) : (
+                                                        <ChevronDownIcon className="h-5 w-5" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {expandedTickets.includes(ticket._id) && (
+                                            <div className="mt-4 border-t pt-4">
+                                                <dl className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                                                    <div>
+                                                        <dt className="text-sm font-medium text-gray-500">Description</dt>
+                                                        <dd className="mt-1 text-sm text-gray-900">{ticket.description}</dd>
+                                                    </div>
+                                                    {ticket.assignedTo && (
+                                                        <div>
+                                                            <dt className="text-sm font-medium text-gray-500">Assigned To</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{ticket.assignedTo.name}</dd>
+                                                        </div>
+                                                    )}
+                                                    {ticket.resolution && (
+                                                        <div className="sm:col-span-2">
+                                                            <dt className="text-sm font-medium text-gray-500">Resolution</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{ticket.resolution}</dd>
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <dt className="text-sm font-medium text-gray-500">Created By</dt>
+                                                        <dd className="mt-1 text-sm text-gray-900">{ticket.user?.name || 'Unknown'}</dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
+                                                        <dd className="mt-1 text-sm text-gray-900">{formatDate(ticket.updatedAt)}</dd>
+                                                    </div>
+                                                </dl>
+
+                                                {/* Actions */}
+                                                <div className="mt-4 flex space-x-3">
+                                                    {ticket.status === 'open' && (isHR || isAdmin) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); setAssignModal({ show: true, ticket }); }}
+                                                            className="relative z-20 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                                                        >
+                                                            Assign
+                                                        </button>
+                                                    )}
+                                                    {ticket.status === 'open' && (isHR || isAdmin) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); /* Handle resolve */ }}
+                                                            className="relative z-20 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                                                        >
+                                                            Resolve
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
+
+            {/* Assign Modal */}
+            {assignModal.show && (
+                <div className="fixed z-[9999] inset-0 flex items-center justify-center p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+                    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setAssignModal({ show: false, ticket: null })}></div>
+                    <div className="relative bg-white rounded-lg shadow-2xl border border-gray-200 w-96 max-w-md transform transition-all z-[10000]">
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start">
+                                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <TicketIcon className="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                        Assign Ticket
+                                    </h3>
+                                    <div className="mt-2">
+                                        <p className="text-sm text-gray-500">
+                                            Assign ticket #{assignModal.ticket?.ticketNumber} to a team member
+                                        </p>
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Assign To
+                                            </label>
+                                            <select
+                                                value={assignTo}
+                                                onChange={(e) => setAssignTo(e.target.value)}
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                            >
+                                                <option value="">Select team member</option>
+                                                <option value="hr-team">HR Team</option>
+                                                <option value="it-team">IT Team</option>
+                                                <option value="finance-team">Finance Team</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button
+                                type="button"
+                                onClick={handleAssignTicket}
+                                disabled={!assignTo}
+                                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Assign
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setAssignModal({ show: false, ticket: null })}
+                                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default Tickets;
