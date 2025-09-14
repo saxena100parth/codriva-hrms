@@ -193,12 +193,19 @@ class UserService {
   }
 
   // Review onboarding request (HR/Admin only)
-  async reviewOnboarding(userId, decision, comments = '') {
+  async reviewOnboarding(userId, decision, comments = '', officialEmail = null) {
     try {
-      const response = await apiService.put(`/users/${userId}/onboarding/review`, {
+      const payload = {
         decision,
         comments
-      });
+      };
+
+      // Add official email to payload if provided (required for approval)
+      if (officialEmail) {
+        payload.officialEmail = officialEmail;
+      }
+
+      const response = await apiService.put(`/users/${userId}/onboarding/review`, payload);
       return response.data;
     } catch (error) {
       throw error;

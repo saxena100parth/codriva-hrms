@@ -7,7 +7,6 @@ import ErrorHandler from '../components/ErrorHandler';
 import {
     UserIcon,
     EnvelopeIcon,
-    PhoneIcon,
     CalendarIcon,
     MapPinIcon,
     BriefcaseIcon,
@@ -21,7 +20,7 @@ const Onboarding = () => {
     const { user, otpLogin } = useAuth();
     const { error: globalError, handleError, clearError } = useErrorHandler();
 
-    const [step, setStep] = useState(1); // 1: OTP Verification, 2: Personal Details, 3: Job Details, 4: Complete
+    const [step, setStep] = useState(1); // 1: Email Verification, 2: Personal Details, 3: Job Details, 4: Complete
     const [isLoading, setIsLoading] = useState(false);
     const [otp, setOtp] = useState('');
     const [otpSent, setOtpSent] = useState(false);
@@ -37,15 +36,15 @@ const Onboarding = () => {
         gender: '',
         personalEmail: '',
         currentAddress: {
-            street: '',
+            line1: '',
             city: '',
             state: '',
             country: '',
-            zipCode: ''
+            zip: ''
         },
         emergencyContact: {
             name: '',
-            relationship: '',
+            relation: '',
             phone: ''
         },
 
@@ -60,11 +59,9 @@ const Onboarding = () => {
         // Documents
         aadharNumber: '',
         panNumber: '',
-        bankAccount: {
-            accountNumber: '',
-            ifscCode: '',
-            bankName: ''
-        }
+        bankAccountNumber: '',
+        ifscSwiftRoutingCode: '',
+        taxId: ''
     });
 
     const mobile = searchParams.get('mobile');
@@ -82,7 +79,7 @@ const Onboarding = () => {
             return;
         }
 
-        // Fetch existing user data and auto-send OTP when component mounts
+        // Fetch existing user data and auto-send OTP to email when component mounts
         fetchUserData();
         sendOTP();
     }, [mobile, user, navigate]);
@@ -103,15 +100,15 @@ const Onboarding = () => {
                     dateOfBirth: response.user.dateOfBirth || '',
                     gender: response.user.gender || '',
                     currentAddress: {
-                        street: response.user.currentAddress?.street || '',
+                        line1: response.user.currentAddress?.line1 || '',
                         city: response.user.currentAddress?.city || '',
                         state: response.user.currentAddress?.state || '',
                         country: response.user.currentAddress?.country || '',
-                        zipCode: response.user.currentAddress?.zipCode || ''
+                        zip: response.user.currentAddress?.zip || ''
                     },
                     emergencyContact: {
                         name: response.user.emergencyContact?.name || '',
-                        relationship: response.user.emergencyContact?.relationship || '',
+                        relation: response.user.emergencyContact?.relation || '',
                         phone: response.user.emergencyContact?.phone || ''
                     },
                     // Job Information
@@ -124,11 +121,9 @@ const Onboarding = () => {
                     // Documents
                     aadharNumber: response.user.aadharNumber || '',
                     panNumber: response.user.panNumber || '',
-                    bankAccount: {
-                        accountNumber: response.user.bankAccount?.accountNumber || '',
-                        ifscCode: response.user.bankAccount?.ifscCode || '',
-                        bankName: response.user.bankAccount?.bankName || ''
-                    }
+                    bankAccountNumber: response.user.bankAccountNumber || '',
+                    ifscSwiftRoutingCode: response.user.ifscSwiftRoutingCode || '',
+                    taxId: response.user.taxId || ''
                 }));
             }
         } catch (error) {
@@ -142,7 +137,7 @@ const Onboarding = () => {
             setIsLoading(true);
             clearError();
 
-            // Call backend to send OTP
+            // Call backend to send OTP to email
             await userService.sendOnboardingOTP(mobile);
             setOtpSent(true);
         } catch (error) {
@@ -158,7 +153,7 @@ const Onboarding = () => {
             setIsLoading(true);
             clearError();
 
-            // Use the OTP login method from AuthContext
+            // Use the OTP login method from AuthContext (mobile as identifier, email as delivery)
             await otpLogin(mobile, otp);
 
             // Fetch updated user data after successful OTP verification
@@ -272,7 +267,7 @@ const Onboarding = () => {
                     </div>
                     <div className="flex justify-center mt-4 space-x-16">
                         <span className={`text-sm ${step >= 1 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
-                            OTP Verification
+                            Email Verification
                         </span>
                         <span className={`text-sm ${step >= 2 ? 'text-primary-600 font-medium' : 'text-gray-500'}`}>
                             Personal Details
@@ -286,14 +281,16 @@ const Onboarding = () => {
                     </div>
                 </div>
 
-                {/* Step 1: OTP Verification */}
+                {/* Step 1: Email Verification */}
                 {step === 1 && (
                     <div className="bg-white rounded-lg shadow-md p-8">
                         <div className="text-center mb-6">
-                            <PhoneIcon className="h-16 w-16 text-primary-600 mx-auto mb-4" />
-                            <h2 className="text-2xl font-bold text-gray-900">Verify Your Phone Number</h2>
+                            <svg className="h-16 w-16 text-primary-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <h2 className="text-2xl font-bold text-gray-900">Verify Your Email</h2>
                             <p className="text-gray-600 mt-2">
-                                We've sent a verification code to {mobile}
+                                We've sent a verification code to your personal email address
                             </p>
                         </div>
 
@@ -454,8 +451,8 @@ const Onboarding = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        name="currentAddress.street"
-                                        value={formData.currentAddress.street}
+                                        name="currentAddress.line1"
+                                        value={formData.currentAddress.line1}
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                     />
@@ -506,8 +503,8 @@ const Onboarding = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        name="currentAddress.zipCode"
-                                        value={formData.currentAddress.zipCode}
+                                        name="currentAddress.zip"
+                                        value={formData.currentAddress.zip}
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                     />
@@ -538,8 +535,8 @@ const Onboarding = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        name="emergencyContact.relationship"
-                                        value={formData.emergencyContact.relationship}
+                                        name="emergencyContact.relation"
+                                        value={formData.emergencyContact.relation}
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                     />
@@ -675,18 +672,18 @@ const Onboarding = () => {
                             </div>
                         </div>
 
-                        {/* Bank Account Section */}
+                        {/* Banking & Tax Information Section */}
                         <div className="mt-8">
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Details</h3>
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Banking & Tax Information</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Bank Name
+                                        Bank Account Number
                                     </label>
                                     <input
                                         type="text"
-                                        name="bankAccount.bankName"
-                                        value={formData.bankAccount.bankName}
+                                        name="bankAccountNumber"
+                                        value={formData.bankAccountNumber}
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                     />
@@ -694,12 +691,12 @@ const Onboarding = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Account Number
+                                        IFSC/SWIFT Code
                                     </label>
                                     <input
                                         type="text"
-                                        name="bankAccount.accountNumber"
-                                        value={formData.bankAccount.accountNumber}
+                                        name="ifscSwiftRoutingCode"
+                                        value={formData.ifscSwiftRoutingCode}
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                     />
@@ -707,12 +704,12 @@ const Onboarding = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        IFSC Code
+                                        Tax ID (PAN/Aadhar)
                                     </label>
                                     <input
                                         type="text"
-                                        name="bankAccount.ifscCode"
-                                        value={formData.bankAccount.ifscCode}
+                                        name="taxId"
+                                        value={formData.taxId}
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                     />

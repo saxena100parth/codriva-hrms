@@ -9,8 +9,11 @@ class AuthService {
 
   // Login user
   async login(email, password) {
-    // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    // Check for user by official email only (not personal email)
+    // This ensures only the official email assigned by HR/Admin can be used for login
+    const user = await User.findOne({
+      email: email.toLowerCase() // Only search by official email field
+    }).select('+password');
 
     if (!user) {
       throw new Error('Invalid credentials');

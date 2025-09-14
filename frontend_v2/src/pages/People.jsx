@@ -37,9 +37,19 @@ const People = () => {
     const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [showPendingDetailsModal, setShowPendingDetailsModal] = useState(false);
+    const [showEditPendingModal, setShowEditPendingModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedUserForApproval, setSelectedUserForApproval] = useState(null);
+    const [selectedPendingUser, setSelectedPendingUser] = useState(null);
     const [newRole, setNewRole] = useState('');
     const [editFormData, setEditFormData] = useState({});
+    const [approvalFormData, setApprovalFormData] = useState({
+        officialEmail: '',
+        comments: ''
+    });
+    const [editPendingFormData, setEditPendingFormData] = useState({});
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 10,
@@ -100,14 +110,28 @@ const People = () => {
     };
 
     const handleApproveOnboarding = async (userId) => {
-        if (!window.confirm('Are you sure you want to approve this onboarding request?')) {
+        // Show modal for approval with official email requirement
+        setSelectedUserForApproval(pendingOnboardings.find(user => user._id === userId));
+        setShowApprovalModal(true);
+    };
+
+    const handleApprovalSubmit = async () => {
+        if (!approvalFormData.officialEmail) {
+            toast.error('Official email address is required for approval');
             return;
         }
 
         try {
-            const comments = prompt('Enter approval comments (optional):') || 'Onboarding approved';
-            await userService.reviewOnboarding(userId, 'approve', comments);
+            await userService.reviewOnboarding(
+                selectedUserForApproval._id,
+                'approve',
+                approvalFormData.comments || 'Onboarding approved',
+                approvalFormData.officialEmail
+            );
             toast.success('Onboarding request approved successfully!');
+            setShowApprovalModal(false);
+            setSelectedUserForApproval(null);
+            setApprovalFormData({ officialEmail: '', comments: '' });
             fetchUsers();
             fetchPendingOnboardings();
         } catch (error) {
@@ -133,6 +157,108 @@ const People = () => {
             fetchPendingOnboardings();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Failed to reject onboarding request');
+        }
+    };
+
+    const handleEditPendingUser = (user) => {
+        setSelectedPendingUser(user);
+        // Initialize form data with current user data
+        setEditPendingFormData({
+            fullName: {
+                first: user.fullName?.first || '',
+                middle: user.fullName?.middle || '',
+                last: user.fullName?.last || ''
+            },
+            personalEmail: user.personalEmail || '',
+            mobileNumber: user.mobileNumber || '',
+            dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : '',
+            gender: user.gender || '',
+            jobTitle: user.jobTitle || '',
+            department: user.department || '',
+            employmentType: user.employmentType || '',
+            reportingManagerName: user.reportingManagerName || '',
+            joiningDate: user.joiningDate ? user.joiningDate.split('T')[0] : '',
+            currentAddress: {
+                line1: user.currentAddress?.line1 || '',
+                line2: user.currentAddress?.line2 || '',
+                city: user.currentAddress?.city || '',
+                state: user.currentAddress?.state || '',
+                zip: user.currentAddress?.zip || '',
+                country: user.currentAddress?.country || ''
+            },
+            permanentAddress: {
+                line1: user.permanentAddress?.line1 || '',
+                line2: user.permanentAddress?.line2 || '',
+                city: user.permanentAddress?.city || '',
+                state: user.permanentAddress?.state || '',
+                zip: user.permanentAddress?.zip || '',
+                country: user.permanentAddress?.country || ''
+            },
+            bankAccountNumber: user.bankAccountNumber || '',
+            ifscSwiftRoutingCode: user.ifscSwiftRoutingCode || '',
+            taxId: user.taxId || '',
+            emergencyContact: {
+                name: user.emergencyContact?.name || '',
+                relation: user.emergencyContact?.relation || '',
+                phone: user.emergencyContact?.phone || ''
+            },
+            compliance: {
+                ndaSigned: user.compliance?.ndaSigned || false,
+                pfOrSocialSecurityConsent: user.compliance?.pfOrSocialSecurityConsent || false,
+                offerLetter: user.compliance?.offerLetter || ''
+            }
+        });
+        setShowEditPendingModal(true);
+    };
+
+    const handleEditPendingFormChange = (field, value, subField = null) => {
+        if (subField) {
+            setEditPendingFormData(prev => ({
+                ...prev,
+                [field]: {
+                    ...prev[field],
+                    [subField]: value
+                }
+            }));
+        } else {
+            setEditPendingFormData(prev => ({
+                ...prev,
+                [field]: value
+            }));
+        }
+    };
+
+    const handleEditPendingSubmit = async () => {
+        try {
+            // Flatten the nested data for API submission
+            const flattenedData = {
+                fullName: editPendingFormData.fullName,
+                personalEmail: editPendingFormData.personalEmail,
+                mobileNumber: editPendingFormData.mobileNumber,
+                dateOfBirth: editPendingFormData.dateOfBirth,
+                gender: editPendingFormData.gender,
+                jobTitle: editPendingFormData.jobTitle,
+                department: editPendingFormData.department,
+                employmentType: editPendingFormData.employmentType,
+                reportingManagerName: editPendingFormData.reportingManagerName,
+                joiningDate: editPendingFormData.joiningDate,
+                currentAddress: editPendingFormData.currentAddress,
+                permanentAddress: editPendingFormData.permanentAddress,
+                bankAccountNumber: editPendingFormData.bankAccountNumber,
+                ifscSwiftRoutingCode: editPendingFormData.ifscSwiftRoutingCode,
+                taxId: editPendingFormData.taxId,
+                emergencyContact: editPendingFormData.emergencyContact,
+                compliance: editPendingFormData.compliance
+            };
+
+            await userService.updateUser(selectedPendingUser._id, flattenedData);
+            toast.success('Pending onboarding details updated successfully!');
+            setShowEditPendingModal(false);
+            setSelectedPendingUser(null);
+            setEditPendingFormData({});
+            fetchPendingOnboardings();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Failed to update pending onboarding details');
         }
     };
 
@@ -561,6 +687,16 @@ const People = () => {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center space-x-3 ml-4">
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedPendingUser(user);
+                                                                setShowPendingDetailsModal(true);
+                                                            }}
+                                                            className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                                                        >
+                                                            <EyeIcon className="h-4 w-4 mr-2" />
+                                                            View Details
+                                                        </button>
                                                         <button
                                                             onClick={() => handleApproveOnboarding(user._id)}
                                                             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 shadow-sm"
@@ -1822,6 +1958,606 @@ const People = () => {
                                     className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
                                 >
                                     Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Approval Modal */}
+            {showApprovalModal && selectedUserForApproval && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium text-gray-900">Approve Onboarding</h3>
+                                <button
+                                    onClick={() => {
+                                        setShowApprovalModal(false);
+                                        setSelectedUserForApproval(null);
+                                        setApprovalFormData({ officialEmail: '', comments: '' });
+                                    }}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <XMarkIcon className="h-6 w-6" />
+                                </button>
+                            </div>
+
+                            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                                <h4 className="text-sm font-medium text-blue-800 mb-2">Employee Information</h4>
+                                <p className="text-sm text-blue-700">
+                                    <strong>Name:</strong> {selectedUserForApproval.fullName?.first} {selectedUserForApproval.fullName?.last}<br />
+                                    <strong>Personal Email:</strong> {selectedUserForApproval.personalEmail}<br />
+                                    <strong>Mobile:</strong> {selectedUserForApproval.mobileNumber}
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Official Email Address *
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={approvalFormData.officialEmail}
+                                        onChange={(e) => setApprovalFormData({
+                                            ...approvalFormData,
+                                            officialEmail: e.target.value
+                                        })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="employee@company.com"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        This will be the only email address the employee can use to log in.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Approval Comments (Optional)
+                                    </label>
+                                    <textarea
+                                        value={approvalFormData.comments}
+                                        onChange={(e) => setApprovalFormData({
+                                            ...approvalFormData,
+                                            comments: e.target.value
+                                        })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        rows={3}
+                                        placeholder="Welcome to the team! Your onboarding has been approved."
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setShowApprovalModal(false);
+                                        setSelectedUserForApproval(null);
+                                        setApprovalFormData({ officialEmail: '', comments: '' });
+                                    }}
+                                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleApprovalSubmit}
+                                    disabled={!approvalFormData.officialEmail}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Approve & Send Credentials
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pending Details Modal */}
+            {showPendingDetailsModal && selectedPendingUser && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-medium text-gray-900">Onboarding Request Details</h3>
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => {
+                                            setShowPendingDetailsModal(false);
+                                            handleEditPendingUser(selectedPendingUser);
+                                        }}
+                                        className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                    >
+                                        <PencilIcon className="h-4 w-4 mr-2" />
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowPendingDetailsModal(false);
+                                            setSelectedPendingUser(null);
+                                        }}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        <XMarkIcon className="h-6 w-6" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Personal Information */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Full Name</label>
+                                            <p className="text-sm text-gray-900">
+                                                {selectedPendingUser.fullName?.first} {selectedPendingUser.fullName?.middle} {selectedPendingUser.fullName?.last}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Personal Email</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.personalEmail || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Mobile Number</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.mobileNumber || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Date of Birth</label>
+                                            <p className="text-sm text-gray-900">
+                                                {selectedPendingUser.dateOfBirth ? new Date(selectedPendingUser.dateOfBirth).toLocaleDateString() : 'N/A'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Gender</label>
+                                            <p className="text-sm text-gray-900 capitalize">{selectedPendingUser.gender || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Work Information */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-lg font-medium text-gray-900 mb-4">Work Information</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Job Title</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.jobTitle || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Department</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.department || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Employment Type</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.employmentType || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Reporting Manager</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.reportingManagerName || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Joining Date</label>
+                                            <p className="text-sm text-gray-900">
+                                                {selectedPendingUser.joiningDate ? new Date(selectedPendingUser.joiningDate).toLocaleDateString() : 'N/A'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Address Information */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-lg font-medium text-gray-900 mb-4">Address Information</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Current Address</label>
+                                            <p className="text-sm text-gray-900">
+                                                {selectedPendingUser.currentAddress?.line1 || 'N/A'}
+                                                {selectedPendingUser.currentAddress?.line2 && `, ${selectedPendingUser.currentAddress.line2}`}
+                                                {selectedPendingUser.currentAddress?.city && `, ${selectedPendingUser.currentAddress.city}`}
+                                                {selectedPendingUser.currentAddress?.state && `, ${selectedPendingUser.currentAddress.state}`}
+                                                {selectedPendingUser.currentAddress?.zip && ` ${selectedPendingUser.currentAddress.zip}`}
+                                                {selectedPendingUser.currentAddress?.country && `, ${selectedPendingUser.currentAddress.country}`}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Permanent Address</label>
+                                            <p className="text-sm text-gray-900">
+                                                {selectedPendingUser.permanentAddress?.line1 || 'N/A'}
+                                                {selectedPendingUser.permanentAddress?.line2 && `, ${selectedPendingUser.permanentAddress.line2}`}
+                                                {selectedPendingUser.permanentAddress?.city && `, ${selectedPendingUser.permanentAddress.city}`}
+                                                {selectedPendingUser.permanentAddress?.state && `, ${selectedPendingUser.permanentAddress.state}`}
+                                                {selectedPendingUser.permanentAddress?.zip && ` ${selectedPendingUser.permanentAddress.zip}`}
+                                                {selectedPendingUser.permanentAddress?.country && `, ${selectedPendingUser.permanentAddress.country}`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Banking & Emergency Contact */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-lg font-medium text-gray-900 mb-4">Banking & Emergency Contact</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Bank Account</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.bankAccountNumber || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">IFSC/SWIFT Code</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.ifscSwiftRoutingCode || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Tax ID</label>
+                                            <p className="text-sm text-gray-900">{selectedPendingUser.taxId || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500">Emergency Contact</label>
+                                            <p className="text-sm text-gray-900">
+                                                {selectedPendingUser.emergencyContact?.name || 'N/A'}
+                                                {selectedPendingUser.emergencyContact?.relation && ` (${selectedPendingUser.emergencyContact.relation})`}
+                                                {selectedPendingUser.emergencyContact?.phone && ` - ${selectedPendingUser.emergencyContact.phone}`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Compliance Information */}
+                            <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                                <h4 className="text-lg font-medium text-gray-900 mb-4">Compliance Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-500">NDA Signed</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedPendingUser.compliance?.ndaSigned ? 'Yes' : 'No'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-500">PF/Social Security Consent</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedPendingUser.compliance?.pfOrSocialSecurityConsent ? 'Yes' : 'No'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-500">Offer Letter</label>
+                                        <p className="text-sm text-gray-900">{selectedPendingUser.compliance?.offerLetter || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Submission Details */}
+                            <div className="mt-6 bg-blue-50 rounded-lg p-4">
+                                <h4 className="text-lg font-medium text-gray-900 mb-4">Submission Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-500">Submitted On</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedPendingUser.onboardingSubmittedAt ? new Date(selectedPendingUser.onboardingSubmittedAt).toLocaleString() : 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-500">Status</label>
+                                        <p className="text-sm text-gray-900">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                {selectedPendingUser.onboardingStatus || 'PENDING'}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setShowPendingDetailsModal(false);
+                                        setSelectedPendingUser(null);
+                                    }}
+                                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowPendingDetailsModal(false);
+                                        handleApproveOnboarding(selectedPendingUser._id);
+                                    }}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                                >
+                                    Approve Request
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Pending Modal */}
+            {showEditPendingModal && selectedPendingUser && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-5 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-medium text-gray-900">Edit Pending Onboarding Details</h3>
+                                <button
+                                    onClick={() => {
+                                        setShowEditPendingModal(false);
+                                        setSelectedPendingUser(null);
+                                        setEditPendingFormData({});
+                                    }}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <XMarkIcon className="h-6 w-6" />
+                                </button>
+                            </div>
+
+                            <div className="max-h-96 overflow-y-auto">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Personal Information */}
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <h4 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h4>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">First Name *</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editPendingFormData.fullName?.first || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('fullName', e.target.value, 'first')}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Middle Name</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editPendingFormData.fullName?.middle || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('fullName', e.target.value, 'middle')}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editPendingFormData.fullName?.last || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('fullName', e.target.value, 'last')}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Personal Email *</label>
+                                                <input
+                                                    type="email"
+                                                    value={editPendingFormData.personalEmail || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('personalEmail', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Mobile Number *</label>
+                                                <input
+                                                    type="tel"
+                                                    value={editPendingFormData.mobileNumber || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('mobileNumber', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                                                    <input
+                                                        type="date"
+                                                        value={editPendingFormData.dateOfBirth || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('dateOfBirth', e.target.value)}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Gender</label>
+                                                    <select
+                                                        value={editPendingFormData.gender || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('gender', e.target.value)}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    >
+                                                        <option value="">Select Gender</option>
+                                                        <option value="male">Male</option>
+                                                        <option value="female">Female</option>
+                                                        <option value="other">Other</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Work Information */}
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <h4 className="text-lg font-medium text-gray-900 mb-4">Work Information</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Job Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={editPendingFormData.jobTitle || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('jobTitle', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Department</label>
+                                                <select
+                                                    value={editPendingFormData.department || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('department', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                >
+                                                    <option value="">Select Department</option>
+                                                    <option value="TECH">Tech</option>
+                                                    <option value="HR">HR</option>
+                                                    <option value="FINANCE">Finance</option>
+                                                    <option value="MARKETING">Marketing</option>
+                                                    <option value="SALES">Sales</option>
+                                                    <option value="OTHER">Other</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Employment Type</label>
+                                                <select
+                                                    value={editPendingFormData.employmentType || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('employmentType', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                >
+                                                    <option value="">Select Type</option>
+                                                    <option value="FULL_TIME">Full Time</option>
+                                                    <option value="PART_TIME">Part Time</option>
+                                                    <option value="CONTRACT">Contract</option>
+                                                    <option value="FREELANCE">Freelance</option>
+                                                    <option value="OTHER">Other</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Reporting Manager</label>
+                                                <input
+                                                    type="text"
+                                                    value={editPendingFormData.reportingManagerName || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('reportingManagerName', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Joining Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={editPendingFormData.joiningDate || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('joiningDate', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Banking Information */}
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <h4 className="text-lg font-medium text-gray-900 mb-4">Banking Information</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Bank Account Number</label>
+                                                <input
+                                                    type="text"
+                                                    value={editPendingFormData.bankAccountNumber || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('bankAccountNumber', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">IFSC/SWIFT Code</label>
+                                                <input
+                                                    type="text"
+                                                    value={editPendingFormData.ifscSwiftRoutingCode || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('ifscSwiftRoutingCode', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Tax ID</label>
+                                                <input
+                                                    type="text"
+                                                    value={editPendingFormData.taxId || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('taxId', e.target.value)}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Emergency Contact */}
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <h4 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Contact Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={editPendingFormData.emergencyContact?.name || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('emergencyContact', e.target.value, 'name')}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Relation</label>
+                                                <input
+                                                    type="text"
+                                                    value={editPendingFormData.emergencyContact?.relation || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('emergencyContact', e.target.value, 'relation')}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                                                <input
+                                                    type="tel"
+                                                    value={editPendingFormData.emergencyContact?.phone || ''}
+                                                    onChange={(e) => handleEditPendingFormChange('emergencyContact', e.target.value, 'phone')}
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Compliance Information */}
+                                <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-lg font-medium text-gray-900 mb-4">Compliance Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="flex items-center space-x-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={editPendingFormData.compliance?.ndaSigned || false}
+                                                onChange={(e) => handleEditPendingFormChange('compliance', e.target.checked, 'ndaSigned')}
+                                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            />
+                                            <label className="text-sm font-medium text-gray-700">NDA Signed</label>
+                                        </div>
+                                        <div className="flex items-center space-x-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={editPendingFormData.compliance?.pfOrSocialSecurityConsent || false}
+                                                onChange={(e) => handleEditPendingFormChange('compliance', e.target.checked, 'pfOrSocialSecurityConsent')}
+                                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            />
+                                            <label className="text-sm font-medium text-gray-700">PF/Social Security Consent</label>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Offer Letter Reference</label>
+                                            <input
+                                                type="text"
+                                                value={editPendingFormData.compliance?.offerLetter || ''}
+                                                onChange={(e) => handleEditPendingFormChange('compliance', e.target.value, 'offerLetter')}
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setShowEditPendingModal(false);
+                                        setSelectedPendingUser(null);
+                                        setEditPendingFormData({});
+                                    }}
+                                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleEditPendingSubmit}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                >
+                                    Update Details
                                 </button>
                             </div>
                         </div>

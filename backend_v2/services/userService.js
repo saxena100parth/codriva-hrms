@@ -357,7 +357,7 @@ class UserService {
   }
 
   // Review onboarding (HR/Admin)
-  async reviewOnboarding(userId, decision, reviewedBy, comments = '') {
+  async reviewOnboarding(userId, decision, reviewedBy, comments = '', officialEmail = null) {
     const user = await User.findById(userId);
 
     if (!user) {
@@ -369,14 +369,34 @@ class UserService {
     }
 
     if (decision === 'approve') {
-      user.onboardingStatus = 'COMPLETED'; // Set to COMPLETED so user can access the app
+      // REQUIRE official email assignment during approval
+      if (!officialEmail) {
+        throw new Error('Official email address is required for approval. Please assign an official email address.');
+      }
+
+      // Validate official email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(officialEmail)) {
+        throw new Error('Please provide a valid official email address.');
+      }
+
+      // Check if official email is already in use
+      const existingUser = await User.findOne({
+        email: officialEmail.toLowerCase(),
+        _id: { $ne: userId } // Exclude current user
+      });
+
+      if (existingUser) {
+        throw new Error('Official email address is already in use by another user.');
+      }
+
+      user.onboardingStatus = 'APPROVED'; // Set to APPROVED first, COMPLETED after email confirmation
       user.onboardingApprovedAt = new Date();
       user.onboardingApprovedBy = reviewedBy;
+      user.onboardingRemarks = comments;
 
-      // Set personalEmail as the official email if no official email is provided
-      if (!user.email && user.personalEmail) {
-        user.email = user.personalEmail;
-      }
+      // Assign the official email address
+      user.email = officialEmail.toLowerCase();
 
       // Generate a temporary password if no password is set
       let tempPassword = null;
@@ -421,9 +441,17 @@ class UserService {
         }
       }
 
+      // Save user with APPROVED status first
+      await user.save();
+
       // Send approval email with official email and temp password
       const { sendOnboardingApprovedNotification } = require('../utils/email');
       await sendOnboardingApprovedNotification(user, tempPassword);
+
+      // Set status to COMPLETED after email is sent
+      user.onboardingStatus = 'COMPLETED';
+      user.status = 'ACTIVE';
+      await user.save();
     } else {
       user.onboardingStatus = 'REJECTED';
       user.onboardingRemarks = comments;

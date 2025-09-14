@@ -201,7 +201,7 @@ exports.submitOnboarding = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/users/:id/onboarding/review
 // @access  Private (HR, Admin)
 exports.reviewOnboarding = asyncHandler(async (req, res, next) => {
-  const { decision, comments } = req.body;
+  const { decision, comments, officialEmail } = req.body;
 
   if (!decision || !['approve', 'reject'].includes(decision)) {
     return res.status(400).json({
@@ -210,11 +210,20 @@ exports.reviewOnboarding = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // Require official email for approval
+  if (decision === 'approve' && !officialEmail) {
+    return res.status(400).json({
+      success: false,
+      error: 'Official email address is required for approval'
+    });
+  }
+
   const result = await userService.reviewOnboarding(
     req.params.id,
     decision,
     req.user.id,
-    comments
+    comments || '',
+    officialEmail
   );
 
   res.status(200).json({

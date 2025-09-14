@@ -29,6 +29,8 @@ const isValidMobileNumber = (number) => {
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
+// NOTE: Only official email addresses (assigned by HR/Admin during onboarding approval) can be used for login
+// Personal email addresses are stored for records but cannot be used for authentication
 exports.login = asyncHandler(async (req, res, next) => {
   const email = sanitizeInput(req.body.email);
   const password = req.body.password; // Don't sanitize password
