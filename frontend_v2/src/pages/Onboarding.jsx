@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import userService from '../services/userService';
+import uploadService from '../services/uploadService';
 import ErrorHandler from '../components/ErrorHandler';
 import {
     UserIcon,
@@ -17,14 +18,15 @@ import {
 const Onboarding = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { user, otpLogin } = useAuth();
+    const { user, otpLogin, updateUser, logout } = useAuth();
     const { error: globalError, handleError, clearError } = useErrorHandler();
 
-    const [step, setStep] = useState(1); // 1: Email Verification, 2: Personal Details, 3: Job Details, 4: Complete
+    const [step, setStep] = useState(1); // 1: Email Verification, 2: Personal Details, 3: Job Details
     const [isLoading, setIsLoading] = useState(false);
     const [otp, setOtp] = useState('');
     const [otpSent, setOtpSent] = useState(false);
     const [otpVerified, setOtpVerified] = useState(false);
+    const [uploadingFiles, setUploadingFiles] = useState({});
 
     const [formData, setFormData] = useState({
         // Personal Information
@@ -61,7 +63,13 @@ const Onboarding = () => {
         panNumber: '',
         bankAccountNumber: '',
         ifscSwiftRoutingCode: '',
-        taxId: ''
+        taxId: '',
+
+        // Document Uploads
+        documents: {
+            educationalCertificates: [],
+            experienceLetters: []
+        }
     });
 
     const mobile = searchParams.get('mobile');
@@ -173,18 +181,131 @@ const Onboarding = () => {
         const { name, value } = e.target;
 
         if (name.includes('.')) {
-            const [parent, child] = name.split('.');
-            setFormData(prev => ({
-                ...prev,
-                [parent]: {
-                    ...prev[parent],
-                    [child]: value
-                }
-            }));
+            const keys = name.split('.');
+
+            if (keys.length === 2) {
+                // Handle two-level nesting (e.g., "currentAddress.city")
+                const [parent, child] = keys;
+                setFormData(prev => ({
+                    ...prev,
+                    [parent]: {
+                        ...prev[parent],
+                        [child]: value
+                    }
+                }));
+            } else if (keys.length === 3) {
+                // Handle three-level nesting (e.g., "documents.governmentId.type")
+                const [parent, child, grandchild] = keys;
+                setFormData(prev => ({
+                    ...prev,
+                    [parent]: {
+                        ...prev[parent],
+                        [child]: {
+                            ...prev[parent]?.[child],
+                            [grandchild]: value
+                        }
+                    }
+                }));
+            }
         } else {
             setFormData(prev => ({
                 ...prev,
                 [name]: value
+            }));
+        }
+    };
+
+    const handleFileUpload = async (file, documentType, fieldName) => {
+        try {
+            // Validate file
+            if (!uploadService.validateFileType(file)) {
+                throw new Error('Invalid file type. Only PDF, images, and Word documents are allowed.');
+            }
+
+            if (!uploadService.validateFileSize(file)) {
+                throw new Error('File too large. Maximum size is 10MB.');
+            }
+
+            // Set uploading state
+            setUploadingFiles(prev => ({
+                ...prev,
+                [fieldName]: true
+            }));
+
+            // Upload file
+            const response = await uploadService.uploadDocument(file, documentType);
+
+            // Update form data with file URL
+            setFormData(prev => ({
+                ...prev,
+                documents: {
+                    ...prev.documents,
+                    [fieldName]: {
+                        ...prev.documents[fieldName],
+                        url: response.data.url,
+                        filename: response.data.filename
+                    }
+                }
+            }));
+
+            return response;
+        } catch (error) {
+            console.error('File upload failed:', error);
+            throw error;
+        } finally {
+            // Clear uploading state
+            setUploadingFiles(prev => ({
+                ...prev,
+                [fieldName]: false
+            }));
+        }
+    };
+
+    const handleMultipleFileUpload = async (files, documentType, fieldName) => {
+        try {
+            // Validate all files
+            for (const file of files) {
+                if (!uploadService.validateFileType(file)) {
+                    throw new Error(`Invalid file type for ${file.name}. Only PDF, images, and Word documents are allowed.`);
+                }
+
+                if (!uploadService.validateFileSize(file)) {
+                    throw new Error(`File ${file.name} is too large. Maximum size is 10MB.`);
+                }
+            }
+
+            // Set uploading state
+            setUploadingFiles(prev => ({
+                ...prev,
+                [fieldName]: true
+            }));
+
+            // Upload files
+            const response = await uploadService.uploadMultipleDocuments(files, documentType);
+
+            // Update form data with file URLs
+            const uploadedFiles = response.data.files.map(file => ({
+                url: file.url,
+                filename: file.filename
+            }));
+
+            setFormData(prev => ({
+                ...prev,
+                documents: {
+                    ...prev.documents,
+                    [fieldName]: uploadedFiles
+                }
+            }));
+
+            return response;
+        } catch (error) {
+            console.error('Multiple file upload failed:', error);
+            throw error;
+        } finally {
+            // Clear uploading state
+            setUploadingFiles(prev => ({
+                ...prev,
+                [fieldName]: false
             }));
         }
     };
@@ -201,9 +322,76 @@ const Onboarding = () => {
             console.log('Onboarding Status:', user?.onboardingStatus);
             console.log('Form Data:', formData);
 
+            // Clean the form data before submission
+            const cleanedFormData = { ...formData };
+
+            // Clean documents object - only include fields with valid data
+            if (cleanedFormData.documents) {
+                // Clean governmentId - only include if it has valid data
+                if (cleanedFormData.documents.governmentId) {
+                    if (!cleanedFormData.documents.governmentId.type ||
+                        !cleanedFormData.documents.governmentId.url) {
+                        delete cleanedFormData.documents.governmentId;
+                    }
+                }
+
+                // Clean taxIdProof - only include if it has valid data
+                if (cleanedFormData.documents.taxIdProof) {
+                    if (!cleanedFormData.documents.taxIdProof.type ||
+                        !cleanedFormData.documents.taxIdProof.url) {
+                        delete cleanedFormData.documents.taxIdProof;
+                    }
+                }
+
+                // Clean educationalCertificates - only include non-empty items
+                if (cleanedFormData.documents.educationalCertificates) {
+                    cleanedFormData.documents.educationalCertificates =
+                        cleanedFormData.documents.educationalCertificates.filter(cert =>
+                            cert && cert.url && cert.url.trim() !== ''
+                        );
+
+                    // If array is empty, remove the property
+                    if (cleanedFormData.documents.educationalCertificates.length === 0) {
+                        delete cleanedFormData.documents.educationalCertificates;
+                    }
+                }
+
+                // Clean experienceLetters - only include non-empty items
+                if (cleanedFormData.documents.experienceLetters) {
+                    cleanedFormData.documents.experienceLetters =
+                        cleanedFormData.documents.experienceLetters.filter(letter =>
+                            letter && letter.url && letter.url.trim() !== ''
+                        );
+
+                    // If array is empty, remove the property
+                    if (cleanedFormData.documents.experienceLetters.length === 0) {
+                        delete cleanedFormData.documents.experienceLetters;
+                    }
+                }
+
+                // If documents object is empty, remove it entirely
+                if (Object.keys(cleanedFormData.documents).length === 0) {
+                    delete cleanedFormData.documents;
+                }
+            }
+
+            console.log('Cleaned Form Data:', cleanedFormData);
+
             // Submit onboarding details
-            await userService.submitOnboardingDetails(formData);
-            setStep(4);
+            await userService.submitOnboardingDetails(cleanedFormData);
+
+            // Update user context with new onboarding status
+            updateUser({ onboardingStatus: 'SUBMITTED' });
+
+            // Immediately logout and redirect to login after successful submission
+            logout();
+            navigate('/login', {
+                replace: true,
+                state: {
+                    message: 'Your onboarding has been submitted successfully. Please wait for HR approval before accessing your account.',
+                    type: 'success'
+                }
+            });
         } catch (error) {
             console.error('Onboarding submission failed:', error);
             handleError(error);
@@ -212,9 +400,6 @@ const Onboarding = () => {
         }
     };
 
-    const handleComplete = () => {
-        navigate('/dashboard');
-    };
 
     if (!mobile) {
         return (
@@ -717,6 +902,197 @@ const Onboarding = () => {
                             </div>
                         </div>
 
+                        {/* Document Upload Section */}
+                        <div className="mt-8">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Document Upload</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                {/* Government ID */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-md font-medium text-gray-900 mb-3">Government ID</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">ID Type</label>
+                                            <select
+                                                name="documents.governmentId.type"
+                                                value={formData.documents.governmentId?.type || ''}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            >
+                                                <option value="">Select ID Type</option>
+                                                <option value="PAN">PAN Card</option>
+                                                <option value="AADHAR">Aadhar Card</option>
+                                                <option value="VOTER_ID">Voter ID</option>
+                                                <option value="PASSPORT">Passport</option>
+                                                <option value="OTHER">Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
+                                            <input
+                                                type="text"
+                                                name="documents.governmentId.number"
+                                                value={formData.documents.governmentId?.number || ''}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                placeholder="Enter ID number"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Document</label>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        try {
+                                                            await handleFileUpload(file, 'government-id', 'governmentId');
+                                                        } catch (error) {
+                                                            handleError(error);
+                                                        }
+                                                    }
+                                                }}
+                                                disabled={uploadingFiles.governmentId}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            />
+                                            {uploadingFiles.governmentId && (
+                                                <p className="text-sm text-blue-600 mt-1">Uploading...</p>
+                                            )}
+                                            {formData.documents.governmentId?.url && (
+                                                <p className="text-sm text-green-600 mt-1">✓ Document uploaded successfully</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tax ID Proof */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-md font-medium text-gray-900 mb-3">Tax ID Proof</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Tax ID Type</label>
+                                            <select
+                                                name="documents.taxIdProof.type"
+                                                value={formData.documents.taxIdProof?.type || ''}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            >
+                                                <option value="">Select Tax ID Type</option>
+                                                <option value="PAN">PAN Card</option>
+                                                <option value="AADHAR">Aadhar Card</option>
+                                                <option value="VOTER_ID">Voter ID</option>
+                                                <option value="PASSPORT">Passport</option>
+                                                <option value="OTHER">Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Tax ID Number</label>
+                                            <input
+                                                type="text"
+                                                name="documents.taxIdProof.number"
+                                                value={formData.documents.taxIdProof?.number || ''}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                placeholder="Enter Tax ID number"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Document</label>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        try {
+                                                            await handleFileUpload(file, 'tax-proof', 'taxIdProof');
+                                                        } catch (error) {
+                                                            handleError(error);
+                                                        }
+                                                    }
+                                                }}
+                                                disabled={uploadingFiles.taxIdProof}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            />
+                                            {uploadingFiles.taxIdProof && (
+                                                <p className="text-sm text-blue-600 mt-1">Uploading...</p>
+                                            )}
+                                            {formData.documents.taxIdProof?.url && (
+                                                <p className="text-sm text-green-600 mt-1">✓ Document uploaded successfully</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Educational Certificates */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-md font-medium text-gray-900 mb-3">Educational Certificates</h4>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Upload Certificates</label>
+                                        <input
+                                            type="file"
+                                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                            multiple
+                                            onChange={async (e) => {
+                                                const files = Array.from(e.target.files);
+                                                if (files.length > 0) {
+                                                    try {
+                                                        await handleMultipleFileUpload(files, 'educational', 'educationalCertificates');
+                                                    } catch (error) {
+                                                        handleError(error);
+                                                    }
+                                                }
+                                            }}
+                                            disabled={uploadingFiles.educationalCertificates}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        />
+                                        {uploadingFiles.educationalCertificates && (
+                                            <p className="text-sm text-blue-600 mt-1">Uploading...</p>
+                                        )}
+                                        {formData.documents.educationalCertificates.length > 0 && (
+                                            <p className="text-sm text-green-600 mt-1">
+                                                ✓ {formData.documents.educationalCertificates.length} certificate(s) uploaded
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Experience Letters */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <h4 className="text-md font-medium text-gray-900 mb-3">Experience Letters</h4>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Upload Experience Letters</label>
+                                        <input
+                                            type="file"
+                                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                            multiple
+                                            onChange={async (e) => {
+                                                const files = Array.from(e.target.files);
+                                                if (files.length > 0) {
+                                                    try {
+                                                        await handleMultipleFileUpload(files, 'experience', 'experienceLetters');
+                                                    } catch (error) {
+                                                        handleError(error);
+                                                    }
+                                                }
+                                            }}
+                                            disabled={uploadingFiles.experienceLetters}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        />
+                                        {uploadingFiles.experienceLetters && (
+                                            <p className="text-sm text-blue-600 mt-1">Uploading...</p>
+                                        )}
+                                        {formData.documents.experienceLetters.length > 0 && (
+                                            <p className="text-sm text-green-600 mt-1">
+                                                ✓ {formData.documents.experienceLetters.length} experience letter(s) uploaded
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="mt-6 flex justify-between">
                             <button
                                 onClick={() => setStep(2)}
@@ -735,22 +1111,6 @@ const Onboarding = () => {
                     </div>
                 )}
 
-                {/* Step 4: Complete */}
-                {step === 4 && (
-                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                        <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Onboarding Complete!</h2>
-                        <p className="text-gray-600 mb-6">
-                            Welcome to the team! Your profile has been successfully created.
-                        </p>
-                        <button
-                            onClick={handleComplete}
-                            className="bg-primary-600 text-white py-3 px-8 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                            Go to Dashboard
-                        </button>
-                    </div>
-                )}
             </div>
         </div>
     );

@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
 const connectDB = require('./config/database');
 const errorHandler = require('./middlewares/errorHandler');
 const config = require('./config/config');
@@ -24,6 +25,7 @@ const leaveRoutes = require('./routes/leaveRoutes');      // Leave management ro
 const ticketRoutes = require('./routes/ticketRoutes');    // Support ticket routes
 const holidayRoutes = require('./routes/holidayRoutes');  // Holiday management routes
 const userRoutes = require('./routes/userRoutes');        // User management routes
+const uploadRoutes = require('./routes/uploadRoutes');    // File upload routes
 
 const app = express();
 
@@ -35,6 +37,9 @@ const app = express();
 app.use(express.json());
 // Parse URL-encoded request bodies
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Enable CORS for frontend communication
 app.use(cors({
@@ -57,6 +62,7 @@ app.use('/api/leaves', leaveRoutes);                     // /api/leaves/* - Leav
 app.use('/api/tickets', ticketRoutes);                   // /api/tickets/* - Support ticket endpoints
 app.use('/api/holidays', holidayRoutes);                 // /api/holidays/* - Holiday management endpoints
 app.use('/api/users', userRoutes);                       // /api/users/* - User management endpoints
+app.use('/api/upload', uploadRoutes);                    // /api/upload/* - File upload endpoints
 
 // ========================================
 // HEALTH CHECK & ERROR HANDLING

@@ -326,8 +326,33 @@ class UserService {
 
     // Update user details
     // Handle reportingManager separately to avoid ObjectId casting issues
-    const { reportingManager, ...otherDetails } = details;
+    const { reportingManager, documents, ...otherDetails } = details;
 
+    // Handle documents separately to ensure proper structure
+    if (documents) {
+      // Only assign documents if they have valid data
+      if (documents.governmentId && documents.governmentId.type && documents.governmentId.url) {
+        user.documents = user.documents || {};
+        user.documents.governmentId = documents.governmentId;
+      }
+
+      if (documents.taxIdProof && documents.taxIdProof.type && documents.taxIdProof.url) {
+        user.documents = user.documents || {};
+        user.documents.taxIdProof = documents.taxIdProof;
+      }
+
+      if (documents.educationalCertificates && Array.isArray(documents.educationalCertificates) && documents.educationalCertificates.length > 0) {
+        user.documents = user.documents || {};
+        user.documents.educationalCertificates = documents.educationalCertificates;
+      }
+
+      if (documents.experienceLetters && Array.isArray(documents.experienceLetters) && documents.experienceLetters.length > 0) {
+        user.documents = user.documents || {};
+        user.documents.experienceLetters = documents.experienceLetters;
+      }
+    }
+
+    // Assign other details
     Object.assign(user, otherDetails);
 
     // Store reporting manager name during onboarding (will be resolved to ObjectId later)

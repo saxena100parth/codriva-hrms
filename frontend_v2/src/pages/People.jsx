@@ -206,13 +206,32 @@ const People = () => {
                 ndaSigned: user.compliance?.ndaSigned || false,
                 pfOrSocialSecurityConsent: user.compliance?.pfOrSocialSecurityConsent || false,
                 offerLetter: user.compliance?.offerLetter || ''
+            },
+            documents: {
+                governmentId: user.documents?.governmentId || null,
+                taxIdProof: user.documents?.taxIdProof || null,
+                educationalCertificates: user.documents?.educationalCertificates || [],
+                experienceLetters: user.documents?.experienceLetters || []
             }
         });
         setShowEditPendingModal(true);
     };
 
-    const handleEditPendingFormChange = (field, value, subField = null) => {
-        if (subField) {
+    const handleEditPendingFormChange = (field, value, subField = null, subSubField = null) => {
+        if (subField && subSubField) {
+            // Handle four-level nesting (e.g., documents.governmentId.type)
+            setEditPendingFormData(prev => ({
+                ...prev,
+                [field]: {
+                    ...prev[field],
+                    [subField]: {
+                        ...prev[field]?.[subField],
+                        [subSubField]: value
+                    }
+                }
+            }));
+        } else if (subField) {
+            // Handle three-level nesting (e.g., emergencyContact.name)
             setEditPendingFormData(prev => ({
                 ...prev,
                 [field]: {
@@ -221,6 +240,7 @@ const People = () => {
                 }
             }));
         } else {
+            // Handle two-level nesting (e.g., personalEmail)
             setEditPendingFormData(prev => ({
                 ...prev,
                 [field]: value
@@ -2226,6 +2246,174 @@ const People = () => {
                                 </div>
                             </div>
 
+                            {/* Document Uploads */}
+                            <div className="mt-6 bg-green-50 rounded-lg p-4">
+                                <h4 className="text-lg font-medium text-gray-900 mb-4">Document Uploads</h4>
+                                <div className="space-y-4">
+                                    {/* Government ID */}
+                                    {selectedPendingUser.documents?.governmentId && (
+                                        <div className="bg-white rounded-lg p-3 border">
+                                            <h5 className="text-md font-medium text-gray-800 mb-2">Government ID</h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-500">Type</label>
+                                                    <p className="text-sm text-gray-900">{selectedPendingUser.documents.governmentId.type || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-500">Number</label>
+                                                    <p className="text-sm text-gray-900">{selectedPendingUser.documents.governmentId.number || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-500">Document</label>
+                                                    {selectedPendingUser.documents.governmentId.url ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                const link = document.createElement('a');
+                                                                link.href = selectedPendingUser.documents.governmentId.url;
+                                                                link.download = selectedPendingUser.documents.governmentId.filename || 'government-id-document';
+                                                                document.body.appendChild(link);
+                                                                link.click();
+                                                                document.body.removeChild(link);
+                                                            }}
+                                                            className="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                        >
+                                                            Download Document
+                                                        </button>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500">No document uploaded</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Tax ID Proof */}
+                                    {selectedPendingUser.documents?.taxIdProof && (
+                                        <div className="bg-white rounded-lg p-3 border">
+                                            <h5 className="text-md font-medium text-gray-800 mb-2">Tax ID Proof</h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-500">Type</label>
+                                                    <p className="text-sm text-gray-900">{selectedPendingUser.documents.taxIdProof.type || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-500">Number</label>
+                                                    <p className="text-sm text-gray-900">{selectedPendingUser.documents.taxIdProof.number || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium text-gray-500">Document</label>
+                                                    {selectedPendingUser.documents.taxIdProof.url ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                const link = document.createElement('a');
+                                                                link.href = selectedPendingUser.documents.taxIdProof.url;
+                                                                link.download = selectedPendingUser.documents.taxIdProof.filename || 'tax-id-proof-document';
+                                                                document.body.appendChild(link);
+                                                                link.click();
+                                                                document.body.removeChild(link);
+                                                            }}
+                                                            className="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                        >
+                                                            Download Document
+                                                        </button>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500">No document uploaded</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Educational Certificates */}
+                                    {selectedPendingUser.documents?.educationalCertificates && selectedPendingUser.documents.educationalCertificates.length > 0 && (
+                                        <div className="bg-white rounded-lg p-3 border">
+                                            <h5 className="text-md font-medium text-gray-800 mb-2">Educational Certificates ({selectedPendingUser.documents.educationalCertificates.length})</h5>
+                                            <div className="space-y-2">
+                                                {selectedPendingUser.documents.educationalCertificates.map((cert, index) => (
+                                                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                                        <div className="flex-1">
+                                                            <span className="text-sm text-gray-700">
+                                                                Certificate {index + 1}
+                                                                {cert.type && ` - ${cert.type}`}
+                                                                {cert.institution && ` (${cert.institution})`}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            {cert.url ? (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const link = document.createElement('a');
+                                                                        link.href = cert.url;
+                                                                        link.download = cert.filename || `educational-certificate-${index + 1}`;
+                                                                        document.body.appendChild(link);
+                                                                        link.click();
+                                                                        document.body.removeChild(link);
+                                                                    }}
+                                                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                                >
+                                                                    Download
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-500">No file</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Experience Letters */}
+                                    {selectedPendingUser.documents?.experienceLetters && selectedPendingUser.documents.experienceLetters.length > 0 && (
+                                        <div className="bg-white rounded-lg p-3 border">
+                                            <h5 className="text-md font-medium text-gray-800 mb-2">Experience Letters ({selectedPendingUser.documents.experienceLetters.length})</h5>
+                                            <div className="space-y-2">
+                                                {selectedPendingUser.documents.experienceLetters.map((letter, index) => (
+                                                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                                        <div className="flex-1">
+                                                            <span className="text-sm text-gray-700">
+                                                                Letter {index + 1}
+                                                                {letter.type && ` - ${letter.type}`}
+                                                                {letter.company && ` (${letter.company})`}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            {letter.url ? (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const link = document.createElement('a');
+                                                                        link.href = letter.url;
+                                                                        link.download = letter.filename || `experience-letter-${index + 1}`;
+                                                                        document.body.appendChild(link);
+                                                                        link.click();
+                                                                        document.body.removeChild(link);
+                                                                    }}
+                                                                    className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                                >
+                                                                    Download
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-500">No file</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* No documents uploaded */}
+                                    {(!selectedPendingUser.documents?.governmentId &&
+                                        !selectedPendingUser.documents?.taxIdProof &&
+                                        (!selectedPendingUser.documents?.educationalCertificates || selectedPendingUser.documents.educationalCertificates.length === 0) &&
+                                        (!selectedPendingUser.documents?.experienceLetters || selectedPendingUser.documents.experienceLetters.length === 0)) && (
+                                            <div className="bg-white rounded-lg p-3 border border-dashed border-gray-300">
+                                                <p className="text-sm text-gray-500 text-center">No documents uploaded by employee</p>
+                                            </div>
+                                        )}
+                                </div>
+                            </div>
+
                             {/* Submission Details */}
                             <div className="mt-6 bg-blue-50 rounded-lg p-4">
                                 <h4 className="text-lg font-medium text-gray-900 mb-4">Submission Details</h4>
@@ -2537,6 +2725,208 @@ const People = () => {
                                                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                             />
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Document Uploads */}
+                                <div className="mt-6 bg-green-50 rounded-lg p-4">
+                                    <h4 className="text-lg font-medium text-gray-900 mb-4">Document Uploads</h4>
+                                    <div className="space-y-4">
+                                        {/* Government ID */}
+                                        <div className="bg-white rounded-lg p-3 border">
+                                            <h5 className="text-md font-medium text-gray-800 mb-3">Government ID</h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Type</label>
+                                                    <select
+                                                        value={editPendingFormData.documents?.governmentId?.type || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('documents', e.target.value, 'governmentId', 'type')}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    >
+                                                        <option value="">Select ID Type</option>
+                                                        <option value="PAN">PAN Card</option>
+                                                        <option value="AADHAR">Aadhar Card</option>
+                                                        <option value="VOTER_ID">Voter ID</option>
+                                                        <option value="PASSPORT">Passport</option>
+                                                        <option value="OTHER">Other</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Number</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editPendingFormData.documents?.governmentId?.number || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('documents', e.target.value, 'governmentId', 'number')}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                        placeholder="Enter ID number"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Document</label>
+                                                    {editPendingFormData.documents?.governmentId?.url ? (
+                                                        <div className="mt-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const link = document.createElement('a');
+                                                                    link.href = editPendingFormData.documents.governmentId.url;
+                                                                    link.download = editPendingFormData.documents.governmentId.filename || 'government-id-document';
+                                                                    document.body.appendChild(link);
+                                                                    link.click();
+                                                                    document.body.removeChild(link);
+                                                                }}
+                                                                className="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                            >
+                                                                Download Document
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500 mt-1">No document uploaded</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Tax ID Proof */}
+                                        <div className="bg-white rounded-lg p-3 border">
+                                            <h5 className="text-md font-medium text-gray-800 mb-3">Tax ID Proof</h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Type</label>
+                                                    <select
+                                                        value={editPendingFormData.documents?.taxIdProof?.type || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('documents', e.target.value, 'taxIdProof', 'type')}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    >
+                                                        <option value="">Select Tax ID Type</option>
+                                                        <option value="PAN">PAN Card</option>
+                                                        <option value="AADHAR">Aadhar Card</option>
+                                                        <option value="VOTER_ID">Voter ID</option>
+                                                        <option value="PASSPORT">Passport</option>
+                                                        <option value="OTHER">Other</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Number</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editPendingFormData.documents?.taxIdProof?.number || ''}
+                                                        onChange={(e) => handleEditPendingFormChange('documents', e.target.value, 'taxIdProof', 'number')}
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                        placeholder="Enter Tax ID number"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Document</label>
+                                                    {editPendingFormData.documents?.taxIdProof?.url ? (
+                                                        <div className="mt-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const link = document.createElement('a');
+                                                                    link.href = editPendingFormData.documents.taxIdProof.url;
+                                                                    link.download = editPendingFormData.documents.taxIdProof.filename || 'tax-id-proof-document';
+                                                                    document.body.appendChild(link);
+                                                                    link.click();
+                                                                    document.body.removeChild(link);
+                                                                }}
+                                                                className="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                            >
+                                                                Download Document
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500 mt-1">No document uploaded</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Educational Certificates */}
+                                        {editPendingFormData.documents?.educationalCertificates && editPendingFormData.documents.educationalCertificates.length > 0 && (
+                                            <div className="bg-white rounded-lg p-3 border">
+                                                <h5 className="text-md font-medium text-gray-800 mb-3">Educational Certificates ({editPendingFormData.documents.educationalCertificates.length})</h5>
+                                                <div className="space-y-2">
+                                                    {editPendingFormData.documents.educationalCertificates.map((cert, index) => (
+                                                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                                            <div className="flex-1">
+                                                                <span className="text-sm text-gray-700">
+                                                                    Certificate {index + 1}
+                                                                    {cert.type && ` - ${cert.type}`}
+                                                                    {cert.institution && ` (${cert.institution})`}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                {cert.url ? (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const link = document.createElement('a');
+                                                                            link.href = cert.url;
+                                                                            link.download = cert.filename || `educational-certificate-${index + 1}`;
+                                                                            document.body.appendChild(link);
+                                                                            link.click();
+                                                                            document.body.removeChild(link);
+                                                                        }}
+                                                                        className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                                    >
+                                                                        Download
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-500">No file</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Experience Letters */}
+                                        {editPendingFormData.documents?.experienceLetters && editPendingFormData.documents.experienceLetters.length > 0 && (
+                                            <div className="bg-white rounded-lg p-3 border">
+                                                <h5 className="text-md font-medium text-gray-800 mb-3">Experience Letters ({editPendingFormData.documents.experienceLetters.length})</h5>
+                                                <div className="space-y-2">
+                                                    {editPendingFormData.documents.experienceLetters.map((letter, index) => (
+                                                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                                            <div className="flex-1">
+                                                                <span className="text-sm text-gray-700">
+                                                                    Letter {index + 1}
+                                                                    {letter.type && ` - ${letter.type}`}
+                                                                    {letter.company && ` (${letter.company})`}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                {letter.url ? (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const link = document.createElement('a');
+                                                                            link.href = letter.url;
+                                                                            link.download = letter.filename || `experience-letter-${index + 1}`;
+                                                                            document.body.appendChild(link);
+                                                                            link.click();
+                                                                            document.body.removeChild(link);
+                                                                        }}
+                                                                        className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                                                    >
+                                                                        Download
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-500">No file</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* No documents uploaded */}
+                                        {(!editPendingFormData.documents?.governmentId &&
+                                            !editPendingFormData.documents?.taxIdProof &&
+                                            (!editPendingFormData.documents?.educationalCertificates || editPendingFormData.documents.educationalCertificates.length === 0) &&
+                                            (!editPendingFormData.documents?.experienceLetters || editPendingFormData.documents.experienceLetters.length === 0)) && (
+                                                <div className="bg-white rounded-lg p-3 border border-dashed border-gray-300">
+                                                    <p className="text-sm text-gray-500 text-center">No documents uploaded by employee</p>
+                                                </div>
+                                            )}
                                     </div>
                                 </div>
                             </div>

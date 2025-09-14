@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import ErrorHandler from './ErrorHandler';
@@ -26,6 +26,11 @@ const LoginPage = () => {
     const { login, error, clearError, isAuthenticated, needsPasswordReset } = useAuth();
     const { error: globalError, handleError, clearError: clearGlobalError } = useErrorHandler();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Get success message from navigation state
+    const successMessage = location.state?.message;
+    const messageType = location.state?.type;
 
     // Navigate when user becomes authenticated
     useEffect(() => {
@@ -118,6 +123,15 @@ const LoginPage = () => {
                                     {error && (
                                         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
                                             {error}
+                                        </div>
+                                    )}
+
+                                    {successMessage && (
+                                        <div className={`border px-4 py-3 rounded-lg ${messageType === 'success'
+                                                ? 'bg-green-50 border-green-200 text-green-600'
+                                                : 'bg-blue-50 border-blue-200 text-blue-600'
+                                            }`}>
+                                            {successMessage}
                                         </div>
                                     )}
 
