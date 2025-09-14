@@ -38,9 +38,14 @@ app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS for frontend communication
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: true, // Allow all origins for development
   credentials: true
 }));
+// Old configuration (restricted to specific frontend URL):
+// app.use(cors({
+//   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+//   credentials: true
+// }));
 
 // ========================================
 // API ROUTES
