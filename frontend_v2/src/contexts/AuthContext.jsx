@@ -33,9 +33,6 @@ const authReducer = (state, action) => {
             };
 
         case AUTH_ACTIONS.LOGIN_SUCCESS:
-            console.log('LOGIN_SUCCESS - payload:', action.payload);
-            console.log('LOGIN_SUCCESS - needsPasswordReset:', action.payload.needsPasswordReset);
-            console.log('LOGIN_SUCCESS - user hasTemporaryPassword:', action.payload.user?.hasTemporaryPassword);
             return {
                 ...state,
                 user: action.payload.user,
@@ -191,6 +188,33 @@ export const AuthProvider = ({ children }) => {
         });
     };
 
+    // Update profile function
+    const updateProfile = async (userData) => {
+        try {
+            const response = await authService.updateProfile(userData);
+            if (response.success) {
+                // Update the user in context with the updated data
+                dispatch({
+                    type: AUTH_ACTIONS.UPDATE_USER,
+                    payload: response.data.user
+                });
+            }
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    // Change password function
+    const changePassword = async (currentPassword, newPassword) => {
+        try {
+            const response = await authService.changePassword(currentPassword, newPassword);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    };
+
     // Clear error function
     const clearError = () => {
         dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
@@ -216,6 +240,8 @@ export const AuthProvider = ({ children }) => {
         otpLogin,
         logout,
         updateUser,
+        updateProfile,
+        changePassword,
         clearError,
         hasRole,
         hasAnyRole,

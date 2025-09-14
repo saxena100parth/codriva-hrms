@@ -1,24 +1,8 @@
 import apiService from './api';
 
 class LeaveService {
-  // Get all leaves for current user
-  async getMyLeaves(filters = {}, page = 1, limit = 10) {
-    try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...filters
-      });
-
-      const response = await apiService.get(`/leaves/my-leaves?${queryParams}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Get all leaves (Admin/HR only)
-  async getAllLeaves(filters = {}, page = 1, limit = 10) {
+  // Get leaves (role-based: employees see their own, HR/Admin see all)
+  async getLeaves(filters = {}, page = 1, limit = 10) {
     try {
       const queryParams = new URLSearchParams({
         page: page.toString(),
@@ -66,27 +50,20 @@ class LeaveService {
   // Cancel leave request
   async cancelLeave(leaveId) {
     try {
-      const response = await apiService.patch(`/leaves/${leaveId}/cancel`);
+      const response = await apiService.put(`/leaves/${leaveId}/cancel`);
       return response.data;
     } catch (error) {
       throw error;
     }
   }
 
-  // Approve leave request (Admin/HR only)
-  async approveLeave(leaveId, comments = '') {
+  // Update leave status (Admin/HR only)
+  async updateLeaveStatus(leaveId, status, rejectionReason = '') {
     try {
-      const response = await apiService.patch(`/leaves/${leaveId}/approve`, { comments });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Reject leave request (Admin/HR only)
-  async rejectLeave(leaveId, rejectionReason) {
-    try {
-      const response = await apiService.patch(`/leaves/${leaveId}/reject`, { rejectionReason });
+      const response = await apiService.put(`/leaves/${leaveId}/status`, {
+        status,
+        rejectionReason
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -148,23 +125,6 @@ class LeaveService {
     }
   }
 
-  // Get all leaves with filters (alias for getAllLeaves)
-  async getLeaves(filters = {}) {
-    return this.getAllLeaves(filters);
-  }
-
-  // Update leave status (HR/Admin)
-  async updateLeaveStatus(id, status, rejectionReason = '') {
-    try {
-      const response = await apiService.put(`/leaves/${id}/status`, {
-        status,
-        rejectionReason
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
 
   // Add comment to leave
   async addComment(id, comment) {

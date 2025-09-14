@@ -14,14 +14,15 @@ import {
     PencilIcon,
     UserPlusIcon,
     ClockIcon,
-    ExclamationTriangleIcon
+    ExclamationTriangleIcon,
+    UserIcon,
+    ShieldCheckIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
 
 const People = () => {
     const { isAdmin, isHR, user } = useAuth();
 
-    // Debug logging
-    console.log('People component - User data:', { user, isAdmin, isHR });
     const [users, setUsers] = useState([]);
     const [pendingOnboardings, setPendingOnboardings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,6 +33,13 @@ const People = () => {
     const [onboardingStatusFilter, setOnboardingStatusFilter] = useState('');
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showOnboardingSection, setShowOnboardingSection] = useState(false);
+    const [showRoleChangeModal, setShowRoleChangeModal] = useState(false);
+    const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [newRole, setNewRole] = useState('');
+    const [editFormData, setEditFormData] = useState({});
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 10,
@@ -64,16 +72,12 @@ const People = () => {
 
     const fetchPendingOnboardings = useCallback(async () => {
         if (!isAdmin && !isHR) {
-            console.log('User is not admin or HR, skipping pending onboardings fetch');
             return;
         }
-
-        console.log('Fetching pending onboardings for user role:', { isAdmin, isHR });
 
         try {
             setOnboardingLoading(true);
             const response = await userService.getPendingOnboardings();
-            console.log('Pending onboardings response:', response);
             setPendingOnboardings(response.data || []);
         } catch (error) {
             console.error('Error fetching pending onboardings:', error);
@@ -87,6 +91,7 @@ const People = () => {
         fetchUsers();
         fetchPendingOnboardings();
     }, [pagination.page, roleFilter, statusFilter, onboardingStatusFilter, fetchUsers, fetchPendingOnboardings]);
+
 
     const handleInviteSuccess = () => {
         toast.success('Employee invitation sent successfully!');
@@ -137,6 +142,48 @@ const People = () => {
         fetchUsers();
     };
 
+    const handleRoleChange = (user) => {
+        setSelectedUser(user);
+        setNewRole(user.role);
+        setShowRoleChangeModal(true);
+    };
+
+    const handleConfirmRoleChange = async () => {
+        if (!selectedUser || !newRole) {
+            toast.error('Please select a role');
+            return;
+        }
+
+        if (newRole === selectedUser.role) {
+            toast.error('User already has this role');
+            setShowRoleChangeModal(false);
+            return;
+        }
+
+        try {
+            await userService.updateUserRole(selectedUser._id, newRole);
+            toast.success(`User role changed from ${selectedUser.role} to ${newRole} successfully`);
+            setShowRoleChangeModal(false);
+            setSelectedUser(null);
+            setNewRole('');
+            fetchUsers();
+        } catch (error) {
+            console.error('Error changing user role:', error);
+            toast.error('Failed to change user role: ' + (error.response?.data?.error || error.message));
+        }
+    };
+
+    const handleCreateAdmin = () => {
+        setShowCreateAdminModal(true);
+    };
+
+    const handleSelectUserForAdmin = (user) => {
+        setSelectedUser(user);
+        setNewRole('ADMIN');
+        setShowCreateAdminModal(false);
+        setShowRoleChangeModal(true);
+    };
+
     const handleToggleStatus = async (userId) => {
         try {
             const result = await userService.toggleUserStatus(userId);
@@ -162,6 +209,149 @@ const People = () => {
         }
     };
 
+    const handleViewUser = (user) => {
+        setSelectedUser(user);
+        setShowViewModal(true);
+    };
+
+    const handleEditUser = (user) => {
+        setSelectedUser(user);
+        setEditFormData({
+            // Personal Information
+            gender: user.gender || '',
+            personalEmail: user.personalEmail || '',
+            mobileNumber: user.mobileNumber || '',
+            dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : '', // Format for date input
+
+            // Work Information
+            role: user.role || '',
+            status: user.status || '',
+            department: user.department || '',
+            jobTitle: user.jobTitle || '',
+            employmentType: user.employmentType || '',
+            reportingManagerName: user.reportingManagerName || '',
+            joiningDate: user.joiningDate ? user.joiningDate.split('T')[0] : '', // Format for date input
+
+            // Address Information
+            currentAddress: {
+                line1: user.currentAddress?.line1 || '',
+                line2: user.currentAddress?.line2 || '',
+                city: user.currentAddress?.city || '',
+                state: user.currentAddress?.state || '',
+                zip: user.currentAddress?.zip || '',
+                country: user.currentAddress?.country || ''
+            },
+            permanentAddress: {
+                line1: user.permanentAddress?.line1 || '',
+                line2: user.permanentAddress?.line2 || '',
+                city: user.permanentAddress?.city || '',
+                state: user.permanentAddress?.state || '',
+                zip: user.permanentAddress?.zip || '',
+                country: user.permanentAddress?.country || ''
+            },
+
+            // Banking & Tax Information
+            bankAccountNumber: user.bankAccountNumber || '',
+            ifscSwiftRoutingCode: user.ifscSwiftRoutingCode || '',
+            taxId: user.taxId || '',
+
+            // Emergency Contact
+            emergencyContact: {
+                name: user.emergencyContact?.name || '',
+                relation: user.emergencyContact?.relation || '',
+                phone: user.emergencyContact?.phone || ''
+            },
+
+            // Leave Information
+            leaveBalance: {
+                annual: user.leaveBalance?.annual || 0,
+                sick: user.leaveBalance?.sick || 0,
+                personal: user.leaveBalance?.personal || 0,
+                maternity: user.leaveBalance?.maternity || 0,
+                paternity: user.leaveBalance?.paternity || 0
+            },
+
+            // Compliance Information
+            compliance: {
+                ndaSigned: user.compliance?.ndaSigned || false,
+                pfOrSocialSecurityConsent: user.compliance?.pfOrSocialSecurityConsent || false,
+                offerLetter: user.compliance?.offerLetter || ''
+            },
+
+            // Onboarding Information
+            onboardingStatus: user.onboardingStatus || '',
+            onboardingRemarks: user.onboardingRemarks || ''
+        });
+        setShowEditModal(true);
+    };
+
+    const handleEditFormChange = (field, value, subField = null) => {
+        setEditFormData(prev => {
+            if (subField) {
+                return {
+                    ...prev,
+                    [field]: {
+                        ...prev[field],
+                        [subField]: value
+                    }
+                };
+            }
+            return {
+                ...prev,
+                [field]: value
+            };
+        });
+    };
+
+    const handleEditSubmit = async () => {
+        if (!selectedUser) return;
+
+        try {
+            const updateData = {};
+
+            // Flatten nested objects for comparison and submission
+            const flattenData = (obj, prefix = '') => {
+                const result = {};
+                Object.keys(obj).forEach(key => {
+                    const value = obj[key];
+                    const newKey = prefix ? `${prefix}.${key}` : key;
+
+                    if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+                        Object.assign(result, flattenData(value, newKey));
+                    } else {
+                        result[newKey] = value;
+                    }
+                });
+                return result;
+            };
+
+            // Compare with original data
+            const originalFlattened = flattenData(selectedUser);
+            const newFlattened = flattenData(editFormData);
+
+            // Only include changed fields
+            Object.keys(newFlattened).forEach(key => {
+                if (newFlattened[key] !== originalFlattened[key]) {
+                    updateData[key] = newFlattened[key];
+                }
+            });
+
+            if (Object.keys(updateData).length === 0) {
+                toast.info('No changes to save');
+                return;
+            }
+
+            await userService.updateUser(selectedUser._id, updateData);
+            toast.success('User updated successfully');
+            setShowEditModal(false);
+            setSelectedUser(null);
+            setEditFormData({});
+            fetchUsers();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Failed to update user');
+        }
+    };
+
     const getDisplayName = (user) => {
         return user.fullName ? [user.fullName.first, user.fullName.middle, user.fullName.last].filter(Boolean).join(' ') : 'Unknown';
     };
@@ -172,6 +362,46 @@ const People = () => {
             case 'HR': return 'bg-blue-100 text-blue-800';
             case 'EMPLOYEE': return 'bg-green-100 text-green-800';
             default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'ACTIVE':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <CheckCircleIcon className="h-4 w-4 mr-1" />
+                        Active
+                    </span>
+                );
+            case 'INACTIVE':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <XCircleIcon className="h-4 w-4 mr-1" />
+                        Inactive
+                    </span>
+                );
+            case 'DRAFT':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        <ClockIcon className="h-4 w-4 mr-1" />
+                        Draft
+                    </span>
+                );
+            case 'DELETED':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <XCircleIcon className="h-4 w-4 mr-1" />
+                        Deleted
+                    </span>
+                );
+            default:
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                        Unknown
+                    </span>
+                );
         }
     };
 
@@ -195,7 +425,7 @@ const People = () => {
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full max-w-full overflow-hidden">
             <div className="sm:flex sm:items-center">
                 <div className="sm:flex-auto">
                     <h1 className="text-2xl font-semibold text-gray-900">People Management</h1>
@@ -212,113 +442,160 @@ const People = () => {
                             <UserPlusIcon className="-ml-1 mr-2 h-5 w-5" />
                             Invite Employee
                         </button>
-                        <Link
-                            to="/admin/create-hr"
+                        <button
+                            onClick={handleCreateAdmin}
                             className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:w-auto"
                         >
                             <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                            Create HR User
-                        </Link>
+                            Change Role
+                        </button>
                     </div>
                 )}
             </div>
 
-            {/* Debug Section */}
-            {(isAdmin || isHR) && (
-                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-blue-800 mb-2">Debug Info</h3>
-                    <p className="text-sm text-blue-600">User Role: {user?.role}</p>
-                    <p className="text-sm text-blue-600">Is Admin: {isAdmin ? 'Yes' : 'No'}</p>
-                    <p className="text-sm text-blue-600">Is HR: {isHR ? 'Yes' : 'No'}</p>
-                    <p className="text-sm text-blue-600">Pending Count: {pendingOnboardings.length}</p>
-                    <button
-                        onClick={() => {
-                            console.log('Manual fetch triggered');
-                            fetchPendingOnboardings();
-                        }}
-                        className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm"
-                    >
-                        Test Fetch Pending Onboardings
-                    </button>
-                </div>
-            )}
 
             {/* Pending Onboardings Section */}
             {(isAdmin || isHR) && (
-                <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center">
-                            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mr-2" />
-                            <h3 className="text-lg font-medium text-yellow-800">
-                                Pending Onboarding Requests ({pendingOnboardings.length})
-                            </h3>
-                        </div>
-                        <button
-                            onClick={() => setShowOnboardingSection(!showOnboardingSection)}
-                            className="text-sm text-yellow-600 hover:text-yellow-800"
-                        >
-                            {showOnboardingSection ? 'Hide' : 'Show'} Details
-                        </button>
-                    </div>
-
-                    {showOnboardingSection && (
-                        <div className="space-y-3">
-                            {onboardingLoading ? (
-                                <div className="flex items-center justify-center py-4">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
-                                    <span className="ml-2 text-yellow-600">Loading...</span>
+                <div className="mt-8">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+                        <div className="px-6 py-4 border-b border-blue-200">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                                        <ClockIcon className="h-6 w-6 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900">
+                                            Pending Onboarding Requests
+                                        </h3>
+                                        <p className="text-sm text-gray-600">
+                                            {pendingOnboardings.length === 0
+                                                ? 'No pending requests'
+                                                : `${pendingOnboardings.length} request${pendingOnboardings.length > 1 ? 's' : ''} awaiting review`
+                                            }
+                                        </p>
+                                    </div>
                                 </div>
-                            ) : pendingOnboardings.length > 0 ? (
-                                pendingOnboardings.map((user) => (
-                                    <div key={user._id} className="bg-white rounded-lg border border-yellow-200 p-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center">
-                                                    <img
-                                                        className="h-10 w-10 rounded-full mr-3"
-                                                        src={`https://ui-avatars.com/api/?name=${getDisplayName(user)}&background=f59e0b&color=fff&size=64`}
-                                                        alt=""
-                                                    />
-                                                    <div>
-                                                        <h4 className="font-medium text-gray-900">{getDisplayName(user)}</h4>
-                                                        <p className="text-sm text-gray-500">{user.personalEmail}</p>
-                                                        <p className="text-xs text-gray-400">
-                                                            Submitted: {new Date(user.onboardingSubmittedAt).toLocaleString()}
-                                                        </p>
-                                                        {user.reportingManagerName && (
-                                                            <p className="text-xs text-gray-400">
-                                                                Reporting Manager: {user.reportingManagerName}
-                                                            </p>
-                                                        )}
+                                <button
+                                    onClick={() => setShowOnboardingSection(!showOnboardingSection)}
+                                    className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-lg text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                                >
+                                    {showOnboardingSection ? (
+                                        <>
+                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                            Hide Details
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                            Show Details
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {showOnboardingSection && (
+                            <div className="p-6">
+                                {onboardingLoading ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                            <span className="text-gray-600 font-medium">Loading onboarding requests...</span>
+                                        </div>
+                                    </div>
+                                ) : pendingOnboardings.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {pendingOnboardings.map((user) => (
+                                            <div key={user._id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-start space-x-4">
+                                                        <div className="flex-shrink-0">
+                                                            <img
+                                                                className="h-14 w-14 rounded-full ring-4 ring-blue-50"
+                                                                src={`https://ui-avatars.com/api/?name=${getDisplayName(user)}&background=3b82f6&color=fff&size=64&bold=true`}
+                                                                alt={getDisplayName(user)}
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center space-x-2 mb-1">
+                                                                <h4 className="text-lg font-semibold text-gray-900 truncate">
+                                                                    {getDisplayName(user)}
+                                                                </h4>
+                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                                    Pending Review
+                                                                </span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center text-sm text-gray-600">
+                                                                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                                                                    </svg>
+                                                                    {user.personalEmail}
+                                                                </div>
+                                                                <div className="flex items-center text-sm text-gray-600">
+                                                                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                    Submitted: {new Date(user.onboardingSubmittedAt).toLocaleDateString('en-US', {
+                                                                        year: 'numeric',
+                                                                        month: 'short',
+                                                                        day: 'numeric',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit'
+                                                                    })}
+                                                                </div>
+                                                                {user.reportingManagerName && (
+                                                                    <div className="flex items-center text-sm text-gray-600">
+                                                                        <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                                        </svg>
+                                                                        Reporting Manager: {user.reportingManagerName}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-3 ml-4">
+                                                        <button
+                                                            onClick={() => handleApproveOnboarding(user._id)}
+                                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 shadow-sm"
+                                                        >
+                                                            <CheckCircleIcon className="h-4 w-4 mr-2" />
+                                                            Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRejectOnboarding(user._id)}
+                                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200 shadow-sm"
+                                                        >
+                                                            <XCircleIcon className="h-4 w-4 mr-2" />
+                                                            Reject
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => handleApproveOnboarding(user._id)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                                >
-                                                    <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                                    Approve
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRejectOnboarding(user._id)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                >
-                                                    <XCircleIcon className="h-4 w-4 mr-1" />
-                                                    Reject
-                                                </button>
-                                            </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-4">
-                                    <p className="text-yellow-700">No pending onboarding requests at this time.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
+                                        <p className="text-gray-600 max-w-sm mx-auto">
+                                            There are no pending onboarding requests at this time. New requests will appear here when employees submit their onboarding forms.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -362,8 +639,10 @@ const People = () => {
                     className="block w-full sm:w-auto pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
                 >
                     <option value="">All Status</option>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="DELETED">Deleted</option>
                 </select>
 
                 <select
@@ -386,20 +665,24 @@ const People = () => {
 
             {/* Users Table */}
             <div className="mt-8 flex flex-col">
-                <div className="table-responsive">
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-medium text-gray-900">Users List</h3>
+                    <p className="text-sm text-gray-500">Scroll horizontally to see all columns</p>
+                </div>
+                <div className="overflow-x-auto shadow-sm rounded-lg border border-gray-200">
                     <div className="inline-block min-w-full py-2 align-middle">
                         <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                            <table className="min-w-full divide-y divide-gray-300">
+                            <table className="min-w-full divide-y divide-gray-300" style={{ minWidth: '1200px' }}>
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Name</th>
-                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Email</th>
-                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Role</th>
-                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Employee ID</th>
-                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Onboarding</th>
-                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Created</th>
-                                        <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-48">Name</th>
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-64">Email</th>
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24">Role</th>
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-32">Employee ID</th>
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24">Status</th>
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-32">Onboarding</th>
+                                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-32">Created</th>
+                                        <th className="relative py-3.5 pl-3 pr-4 sm:pr-6 w-40">
                                             <span className="sr-only">Actions</span>
                                         </th>
                                     </tr>
@@ -407,7 +690,7 @@ const People = () => {
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan="7" className="text-center py-4">
+                                            <td colSpan="8" className="text-center py-4">
                                                 <div className="inline-flex items-center">
                                                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
                                                     <span className="ml-2">Loading...</span>
@@ -416,7 +699,7 @@ const People = () => {
                                         </tr>
                                     ) : users.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="text-center py-4 text-gray-500">
+                                            <td colSpan="8" className="text-center py-4 text-gray-500">
                                                 No users found
                                             </td>
                                         </tr>
@@ -438,8 +721,10 @@ const People = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                    {user.email}
+                                                <td className="px-3 py-4 text-sm text-gray-500">
+                                                    <div className="max-w-xs truncate" title={user.email}>
+                                                        {user.email}
+                                                    </div>
                                                 </td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
@@ -450,17 +735,7 @@ const People = () => {
                                                     {user.employeeId || '-'}
                                                 </td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                    {user.isActive ? (
-                                                        <span className="inline-flex items-center text-green-600">
-                                                            <CheckCircleIcon className="h-5 w-5 mr-1" />
-                                                            Active
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center text-red-600">
-                                                            <XCircleIcon className="h-5 w-5 mr-1" />
-                                                            Inactive
-                                                        </span>
-                                                    )}
+                                                    {getStatusBadge(user.status)}
                                                 </td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     {user.onboardingStatus ? getOnboardingStatusBadge(user.onboardingStatus) : 'N/A'}
@@ -469,29 +744,29 @@ const People = () => {
                                                     {new Date(user.createdAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                    <div className="flex items-center space-x-2">
-                                                        <Link
-                                                            to={`/employees/${user._id}`}
+                                                    <div className="flex items-center justify-end space-x-1">
+                                                        <button
+                                                            onClick={() => handleViewUser(user)}
                                                             className="text-primary-600 hover:text-primary-900"
                                                             title="View Details"
                                                         >
                                                             <EyeIcon className="h-4 w-4" />
-                                                        </Link>
-                                                        {(isAdmin || (user.role === 'EMPLOYEE')) && (
-                                                            <Link
-                                                                to={`/employees/${user._id}/edit`}
+                                                        </button>
+                                                        {(isAdmin || isHR) && (
+                                                            <button
+                                                                onClick={() => handleEditUser(user)}
                                                                 className="text-primary-600 hover:text-primary-900"
-                                                                title="Edit"
+                                                                title="Edit User"
                                                             >
                                                                 <PencilIcon className="h-4 w-4" />
-                                                            </Link>
+                                                            </button>
                                                         )}
                                                         <button
                                                             onClick={() => handleToggleStatus(user._id)}
                                                             className="text-primary-600 hover:text-primary-900"
-                                                            title={user.isActive ? 'Deactivate' : 'Activate'}
+                                                            title={user.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                                                         >
-                                                            {user.isActive ? 'Deactivate' : 'Activate'}
+                                                            {user.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                                                         </button>
                                                         <button
                                                             onClick={() => handleResetPassword(user._id)}
@@ -500,6 +775,15 @@ const People = () => {
                                                         >
                                                             <LockClosedIcon className="h-4 w-4" />
                                                         </button>
+                                                        {isAdmin && user._id !== user?.id && (
+                                                            <button
+                                                                onClick={() => handleRoleChange(user)}
+                                                                className="text-primary-600 hover:text-primary-900"
+                                                                title="Change Role"
+                                                            >
+                                                                <ShieldCheckIcon className="h-4 w-4" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -566,6 +850,983 @@ const People = () => {
                     onClose={() => setShowInviteModal(false)}
                     onSuccess={handleInviteSuccess}
                 />
+            )}
+
+            {/* Role Change Modal */}
+            {showRoleChangeModal && selectedUser && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+                                <ShieldCheckIcon className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 text-center mb-4">
+                                Change User Role
+                            </h3>
+                            <div className="mb-6">
+                                <div className="text-center mb-4">
+                                    <img
+                                        className="h-16 w-16 rounded-full mx-auto mb-2"
+                                        src={`https://ui-avatars.com/api/?name=${getDisplayName(selectedUser)}&background=3b82f6&color=fff&size=64&bold=true`}
+                                        alt={getDisplayName(selectedUser)}
+                                    />
+                                    <h4 className="text-lg font-semibold text-gray-900">{getDisplayName(selectedUser)}</h4>
+                                    <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                                    <p className="text-xs text-gray-400">
+                                        Current Role: <span className="font-medium">{selectedUser.role}</span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Select New Role
+                                    </label>
+                                    <select
+                                        value={newRole}
+                                        onChange={(e) => setNewRole(e.target.value)}
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    >
+                                        <option value="EMPLOYEE">Employee</option>
+                                        <option value="HR">HR</option>
+                                        {selectedUser.role !== 'ADMIN' && <option value="ADMIN">Admin</option>}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setShowRoleChangeModal(false);
+                                        setSelectedUser(null);
+                                        setNewRole('');
+                                    }}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirmRoleChange}
+                                    className="flex-1 px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                >
+                                    Change Role
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* View User Modal */}
+            {showViewModal && selectedUser && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-medium text-gray-900">User Details</h3>
+                            <button
+                                onClick={() => {
+                                    setShowViewModal(false);
+                                    setSelectedUser(null);
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <XMarkIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Personal Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Personal Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Full Name</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedUser.fullName?.first || 'N/A'} {selectedUser.fullName?.middle || ''} {selectedUser.fullName?.last || ''}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Gender</label>
+                                        <p className="text-sm text-gray-900 capitalize">{selectedUser.gender || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Work Email</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.email || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Personal Email</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.personalEmail || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Mobile Number</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.mobileNumber || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Date of Birth</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedUser.dateOfBirth ? new Date(selectedUser.dateOfBirth).toLocaleDateString() : 'N/A'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Work Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Work Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Employee ID</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.employeeId || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Role</label>
+                                        <div className="mt-1">
+                                            {getRoleBadgeColor(selectedUser.role) && (
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(selectedUser.role)}`}>
+                                                    {selectedUser.role}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Status</label>
+                                        <div className="mt-1">
+                                            {getStatusBadge(selectedUser.status)}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Department</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.department || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Job Title</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.jobTitle || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Employment Type</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.employmentType || 'N/A'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Joining Date</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedUser.joiningDate ? new Date(selectedUser.joiningDate).toLocaleDateString() : 'N/A'}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Reporting Manager</label>
+                                        <p className="text-sm text-gray-900">{selectedUser.reportingManagerName || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Address Information */}
+                            {(selectedUser.currentAddress?.line1 || selectedUser.permanentAddress?.line1) && (
+                                <div>
+                                    <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Address Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {selectedUser.currentAddress?.line1 && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-500 mb-2">Current Address</label>
+                                                <div className="text-sm text-gray-900">
+                                                    <p>{selectedUser.currentAddress.line1}</p>
+                                                    {selectedUser.currentAddress.line2 && <p>{selectedUser.currentAddress.line2}</p>}
+                                                    <p>{selectedUser.currentAddress.city}, {selectedUser.currentAddress.state}</p>
+                                                    <p>{selectedUser.currentAddress.zip} {selectedUser.currentAddress.country}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedUser.permanentAddress?.line1 && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-500 mb-2">Permanent Address</label>
+                                                <div className="text-sm text-gray-900">
+                                                    <p>{selectedUser.permanentAddress.line1}</p>
+                                                    {selectedUser.permanentAddress.line2 && <p>{selectedUser.permanentAddress.line2}</p>}
+                                                    <p>{selectedUser.permanentAddress.city}, {selectedUser.permanentAddress.state}</p>
+                                                    <p>{selectedUser.permanentAddress.zip} {selectedUser.permanentAddress.country}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Banking & Tax Information */}
+                            {(selectedUser.bankAccountNumber || selectedUser.ifscSwiftRoutingCode || selectedUser.taxId) && (
+                                <div>
+                                    <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Banking & Tax Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">Bank Account Number</label>
+                                            <p className="text-sm text-gray-900">{selectedUser.bankAccountNumber || 'N/A'}</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">IFSC/SWIFT Code</label>
+                                            <p className="text-sm text-gray-900">{selectedUser.ifscSwiftRoutingCode || 'N/A'}</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">Tax ID</label>
+                                            <p className="text-sm text-gray-900">{selectedUser.taxId || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Emergency Contact */}
+                            {selectedUser.emergencyContact?.name && (
+                                <div>
+                                    <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Emergency Contact</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">Name</label>
+                                            <p className="text-sm text-gray-900">{selectedUser.emergencyContact.name}</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">Relation</label>
+                                            <p className="text-sm text-gray-900">{selectedUser.emergencyContact.relation}</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">Phone</label>
+                                            <p className="text-sm text-gray-900">{selectedUser.emergencyContact.phone}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Leave Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Leave Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500 mb-2">Leave Balance</label>
+                                        <div className="text-sm text-gray-900">
+                                            <p>Annual: {selectedUser.leaveBalance?.annual || 0} days</p>
+                                            <p>Sick: {selectedUser.leaveBalance?.sick || 0} days</p>
+                                            <p>Personal: {selectedUser.leaveBalance?.personal || 0} days</p>
+                                            <p>Maternity: {selectedUser.leaveBalance?.maternity || 0} days</p>
+                                            <p>Paternity: {selectedUser.leaveBalance?.paternity || 0} days</p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500 mb-2">Leaves Taken</label>
+                                        <div className="text-sm text-gray-900">
+                                            <p>Annual: {selectedUser.leavesTaken?.annual || 0} days</p>
+                                            <p>Sick: {selectedUser.leavesTaken?.sick || 0} days</p>
+                                            <p>Personal: {selectedUser.leavesTaken?.personal || 0} days</p>
+                                            <p>Maternity: {selectedUser.leavesTaken?.maternity || 0} days</p>
+                                            <p>Paternity: {selectedUser.leavesTaken?.paternity || 0} days</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Compliance Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Compliance Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">NDA Signed</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedUser.compliance?.ndaSigned ? 'Yes' : 'No'}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">PF/Social Security Consent</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedUser.compliance?.pfOrSocialSecurityConsent ? 'Yes' : 'No'}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Offer Letter</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedUser.compliance?.offerLetter ? 'Provided' : 'Not Provided'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* System Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">System Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Onboarding Status</label>
+                                        <div className="mt-1">
+                                            {selectedUser.onboardingStatus ? getOnboardingStatusBadge(selectedUser.onboardingStatus) : 'N/A'}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Account Status</label>
+                                        <p className="text-sm text-gray-900">
+                                            {selectedUser.hasTemporaryPassword ? 'Temporary Password' : 'Regular Account'}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Account Created</label>
+                                        <p className="text-sm text-gray-900">
+                                            {new Date(selectedUser.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-500">Last Updated</label>
+                                        <p className="text-sm text-gray-900">
+                                            {new Date(selectedUser.updatedAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+
+                                    {selectedUser.onboardingSubmittedAt && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">Onboarding Submitted</label>
+                                            <p className="text-sm text-gray-900">
+                                                {new Date(selectedUser.onboardingSubmittedAt).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {selectedUser.onboardingApprovedAt && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500">Onboarding Approved</label>
+                                            <p className="text-sm text-gray-900">
+                                                {new Date(selectedUser.onboardingApprovedAt).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {selectedUser.onboardingRemarks && (
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-500">Onboarding Remarks</label>
+                                            <p className="text-sm text-gray-900">{selectedUser.onboardingRemarks}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowViewModal(false);
+                                    setSelectedUser(null);
+                                }}
+                                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit User Modal */}
+            {showEditModal && selectedUser && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
+                            <button
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setSelectedUser(null);
+                                    setEditFormData({});
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <XMarkIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-6 max-h-96 overflow-y-auto">
+                            {/* Personal Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Personal Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                                        <select
+                                            value={editFormData.gender}
+                                            onChange={(e) => handleEditFormChange('gender', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">Select Gender</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Personal Email</label>
+                                        <input
+                                            type="email"
+                                            value={editFormData.personalEmail}
+                                            onChange={(e) => handleEditFormChange('personalEmail', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter personal email"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                                        <input
+                                            type="tel"
+                                            value={editFormData.mobileNumber}
+                                            onChange={(e) => handleEditFormChange('mobileNumber', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter mobile number"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                                        <input
+                                            type="date"
+                                            value={editFormData.dateOfBirth}
+                                            onChange={(e) => handleEditFormChange('dateOfBirth', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Work Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Work Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                                        <select
+                                            value={editFormData.role}
+                                            onChange={(e) => handleEditFormChange('role', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="EMPLOYEE">Employee</option>
+                                            <option value="HR">HR</option>
+                                            <option value="ADMIN">Admin</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                        <select
+                                            value={editFormData.status}
+                                            onChange={(e) => handleEditFormChange('status', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="DRAFT">Draft</option>
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="INACTIVE">Inactive</option>
+                                            <option value="DELETED">Deleted</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                                        <select
+                                            value={editFormData.department}
+                                            onChange={(e) => handleEditFormChange('department', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">Select Department</option>
+                                            <option value="TECH">Tech</option>
+                                            <option value="HR">HR</option>
+                                            <option value="FINANCE">Finance</option>
+                                            <option value="MARKETING">Marketing</option>
+                                            <option value="SALES">Sales</option>
+                                            <option value="OTHER">Other</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.jobTitle}
+                                            onChange={(e) => handleEditFormChange('jobTitle', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter job title"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Employment Type</label>
+                                        <select
+                                            value={editFormData.employmentType}
+                                            onChange={(e) => handleEditFormChange('employmentType', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">Select Type</option>
+                                            <option value="FULL_TIME">Full Time</option>
+                                            <option value="PART_TIME">Part Time</option>
+                                            <option value="CONTRACT">Contract</option>
+                                            <option value="FREELANCE">Freelance</option>
+                                            <option value="OTHER">Other</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Joining Date</label>
+                                        <input
+                                            type="date"
+                                            value={editFormData.joiningDate}
+                                            onChange={(e) => handleEditFormChange('joiningDate', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Reporting Manager</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.reportingManagerName}
+                                            onChange={(e) => handleEditFormChange('reportingManagerName', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter reporting manager name"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Address Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Address Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Current Address */}
+                                    <div>
+                                        <h5 className="text-sm font-medium text-gray-600 mb-3">Current Address</h5>
+                                        <div className="space-y-3">
+                                            <input
+                                                type="text"
+                                                value={editFormData.currentAddress?.line1 || ''}
+                                                onChange={(e) => handleEditFormChange('currentAddress', e.target.value, 'line1')}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Address Line 1"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={editFormData.currentAddress?.line2 || ''}
+                                                onChange={(e) => handleEditFormChange('currentAddress', e.target.value, 'line2')}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Address Line 2"
+                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.currentAddress?.city || ''}
+                                                    onChange={(e) => handleEditFormChange('currentAddress', e.target.value, 'city')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="City"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.currentAddress?.state || ''}
+                                                    onChange={(e) => handleEditFormChange('currentAddress', e.target.value, 'state')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="State"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.currentAddress?.zip || ''}
+                                                    onChange={(e) => handleEditFormChange('currentAddress', e.target.value, 'zip')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="ZIP Code"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.currentAddress?.country || ''}
+                                                    onChange={(e) => handleEditFormChange('currentAddress', e.target.value, 'country')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="Country"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Permanent Address */}
+                                    <div>
+                                        <h5 className="text-sm font-medium text-gray-600 mb-3">Permanent Address</h5>
+                                        <div className="space-y-3">
+                                            <input
+                                                type="text"
+                                                value={editFormData.permanentAddress?.line1 || ''}
+                                                onChange={(e) => handleEditFormChange('permanentAddress', e.target.value, 'line1')}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Address Line 1"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={editFormData.permanentAddress?.line2 || ''}
+                                                onChange={(e) => handleEditFormChange('permanentAddress', e.target.value, 'line2')}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Address Line 2"
+                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.permanentAddress?.city || ''}
+                                                    onChange={(e) => handleEditFormChange('permanentAddress', e.target.value, 'city')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="City"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.permanentAddress?.state || ''}
+                                                    onChange={(e) => handleEditFormChange('permanentAddress', e.target.value, 'state')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="State"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.permanentAddress?.zip || ''}
+                                                    onChange={(e) => handleEditFormChange('permanentAddress', e.target.value, 'zip')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="ZIP Code"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.permanentAddress?.country || ''}
+                                                    onChange={(e) => handleEditFormChange('permanentAddress', e.target.value, 'country')}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="Country"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Banking & Tax Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Banking & Tax Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Bank Account Number</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.bankAccountNumber}
+                                            onChange={(e) => handleEditFormChange('bankAccountNumber', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter bank account number"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">IFSC/SWIFT Code</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.ifscSwiftRoutingCode}
+                                            onChange={(e) => handleEditFormChange('ifscSwiftRoutingCode', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter IFSC/SWIFT code"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Tax ID</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.taxId}
+                                            onChange={(e) => handleEditFormChange('taxId', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter tax ID"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Emergency Contact */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Emergency Contact</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.emergencyContact?.name || ''}
+                                            onChange={(e) => handleEditFormChange('emergencyContact', e.target.value, 'name')}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter emergency contact name"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Relation</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.emergencyContact?.relation || ''}
+                                            onChange={(e) => handleEditFormChange('emergencyContact', e.target.value, 'relation')}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter relation"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                                        <input
+                                            type="tel"
+                                            value={editFormData.emergencyContact?.phone || ''}
+                                            onChange={(e) => handleEditFormChange('emergencyContact', e.target.value, 'phone')}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter phone number"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Leave Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Leave Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Leave Balance</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input
+                                                type="number"
+                                                value={editFormData.leaveBalance?.annual || 0}
+                                                onChange={(e) => handleEditFormChange('leaveBalance', parseFloat(e.target.value) || 0, 'annual')}
+                                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Annual"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={editFormData.leaveBalance?.sick || 0}
+                                                onChange={(e) => handleEditFormChange('leaveBalance', parseFloat(e.target.value) || 0, 'sick')}
+                                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Sick"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={editFormData.leaveBalance?.personal || 0}
+                                                onChange={(e) => handleEditFormChange('leaveBalance', parseFloat(e.target.value) || 0, 'personal')}
+                                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Personal"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={editFormData.leaveBalance?.maternity || 0}
+                                                onChange={(e) => handleEditFormChange('leaveBalance', parseFloat(e.target.value) || 0, 'maternity')}
+                                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Maternity"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Paternity Leave</label>
+                                        <input
+                                            type="number"
+                                            value={editFormData.leaveBalance?.paternity || 0}
+                                            onChange={(e) => handleEditFormChange('leaveBalance', parseFloat(e.target.value) || 0, 'paternity')}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Paternity"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Compliance Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Compliance Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-center space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={editFormData.compliance?.ndaSigned || false}
+                                            onChange={(e) => handleEditFormChange('compliance', e.target.checked, 'ndaSigned')}
+                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <label className="text-sm font-medium text-gray-700">NDA Signed</label>
+                                    </div>
+
+                                    <div className="flex items-center space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={editFormData.compliance?.pfOrSocialSecurityConsent || false}
+                                            onChange={(e) => handleEditFormChange('compliance', e.target.checked, 'pfOrSocialSecurityConsent')}
+                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <label className="text-sm font-medium text-gray-700">PF/Social Security Consent</label>
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Offer Letter</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.compliance?.offerLetter || ''}
+                                            onChange={(e) => handleEditFormChange('compliance', e.target.value, 'offerLetter')}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter offer letter reference"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Onboarding Information */}
+                            <div>
+                                <h4 className="text-md font-semibold text-gray-700 border-b pb-2 mb-4">Onboarding Information</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Onboarding Status</label>
+                                        <select
+                                            value={editFormData.onboardingStatus}
+                                            onChange={(e) => handleEditFormChange('onboardingStatus', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="INVITED">Invited</option>
+                                            <option value="PENDING">Pending</option>
+                                            <option value="SUBMITTED">Submitted</option>
+                                            <option value="APPROVED">Approved</option>
+                                            <option value="REJECTED">Rejected</option>
+                                            <option value="COMPLETED">Completed</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Onboarding Remarks</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.onboardingRemarks}
+                                            onChange={(e) => handleEditFormChange('onboardingRemarks', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter onboarding remarks"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex justify-end space-x-3">
+                            <button
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setSelectedUser(null);
+                                    setEditFormData({});
+                                }}
+                                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleEditSubmit}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Admin Modal */}
+            {showCreateAdminModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium text-gray-900">
+                                    Create Admin - Select Employee
+                                </h3>
+                                <button
+                                    onClick={() => setShowCreateAdminModal(false)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <XMarkIcon className="h-6 w-6" />
+                                </button>
+                            </div>
+
+                            <p className="text-sm text-gray-600 mb-6">
+                                Select an employee to promote to admin role. Only employees with ACTIVE status can be promoted to admin.
+                            </p>
+
+                            <div className="max-h-96 overflow-y-auto">
+                                <div className="grid grid-cols-1 gap-3">
+                                    {users
+                                        .filter(user => user.role === 'EMPLOYEE' && user.status === 'ACTIVE')
+                                        .map(user => (
+                                            <div
+                                                key={user._id}
+                                                onClick={() => handleSelectUserForAdmin(user)}
+                                                className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                                            >
+                                                <div className="flex items-center space-x-4">
+                                                    <img
+                                                        className="h-12 w-12 rounded-full"
+                                                        src={`https://ui-avatars.com/api/?name=${getDisplayName(user)}&background=3b82f6&color=fff&size=48&bold=true`}
+                                                        alt={getDisplayName(user)}
+                                                    />
+                                                    <div className="flex-1">
+                                                        <h4 className="text-sm font-medium text-gray-900">
+                                                            {getDisplayName(user)}
+                                                        </h4>
+                                                        <p className="text-sm text-gray-500">{user.email}</p>
+                                                        <div className="flex items-center space-x-2 mt-1">
+                                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                                {user.role}
+                                                            </span>
+                                                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                                {user.department || 'No Department'}
+                                                            </span>
+                                                            {user.jobTitle && (
+                                                                <span className="text-xs text-gray-500">
+                                                                    {user.jobTitle}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-xs text-gray-500">
+                                                            {user.employeeId || 'No ID'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+
+                                {users.filter(user => user.role === 'EMPLOYEE' && user.status === 'ACTIVE').length === 0 && (
+                                    <div className="text-center py-8">
+                                        <UserIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                        <h3 className="mt-2 text-sm font-medium text-gray-900">No Active Employees</h3>
+                                        <p className="mt-1 text-sm text-gray-500">
+                                            There are no active employees available to promote to admin.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <button
+                                    onClick={() => setShowCreateAdminModal(false)}
+                                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

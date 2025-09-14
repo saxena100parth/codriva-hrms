@@ -17,11 +17,21 @@ class TicketService {
 
     const { category, priority, subject, description, attachments } = ticketData;
 
+    // Validate priority if provided
+    if (priority && !['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority.toUpperCase())) {
+      throw new Error('Invalid priority. Must be one of: LOW, MEDIUM, HIGH, URGENT');
+    }
+
+    // Validate category
+    if (!category || !['IT', 'HR', 'FINANCE', 'ADMIN', 'OTHER'].includes(category.toUpperCase())) {
+      throw new Error('Invalid category. Must be one of: IT, HR, FINANCE, ADMIN, OTHER');
+    }
+
     // Create ticket - now associated directly with user instead of employee
     const ticket = await Ticket.create({
       user: userId,
-      category,
-      priority: priority || 'MEDIUM',
+      category: category.toUpperCase(),
+      priority: priority ? priority.toUpperCase() : 'MEDIUM',
       subject,
       description,
       attachments
@@ -112,7 +122,7 @@ class TicketService {
       throw new Error('Ticket not found');
     }
 
-    const { status, assignedTo, resolution } = updates;
+    const { status, priority, assignedTo, resolution } = updates;
 
     // Update fields
     if (status) {
@@ -127,8 +137,20 @@ class TicketService {
       }
     }
 
+    if (priority) {
+      // Validate priority
+      if (!['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority.toUpperCase())) {
+        throw new Error('Invalid priority. Must be one of: LOW, MEDIUM, HIGH, URGENT');
+      }
+      ticket.priority = priority.toUpperCase();
+    }
+
     if (assignedTo !== undefined) {
       ticket.assignedTo = assignedTo;
+    }
+
+    if (resolution) {
+      ticket.resolution = resolution;
     }
 
     await ticket.save();
@@ -136,7 +158,8 @@ class TicketService {
     // Send notification
     const user = await User.findById(ticket.user);
     if (user) {
-      await sendTicketUpdate(user.email, ticket, `Status changed to ${status}`);
+      const updateMessage = status ? `Status changed to ${status}` : 'Ticket updated';
+      await sendTicketUpdate(user.email, ticket, updateMessage);
     }
 
     return {

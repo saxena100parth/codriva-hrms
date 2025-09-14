@@ -9,6 +9,7 @@ const Dashboard = () => {
     const { user, hasRole, hasAnyRole } = useAuth();
     const [dashboardData, setDashboardData] = useState({
         userStats: null,
+        leaveBalance: null,
         leaveStats: null,
         ticketStats: null,
         upcomingHolidays: [],
@@ -30,7 +31,15 @@ const Dashboard = () => {
 
             // All users get their basic stats
             promises.push(userService.getUserDashboard());
-            promises.push(leaveService.getLeaveBalance());
+            promises.push(leaveService.getLeaveBalance().catch(err => {
+                console.warn('Failed to load leave balance:', err);
+                return {
+                    balance: { annual: 1.5, sick: 0, personal: 0, maternity: 0, paternity: 0 },
+                    taken: { annual: 0, sick: 0, personal: 0, maternity: 0, paternity: 0 },
+                    available: { annual: 1.5, sick: 0, personal: 0, maternity: 0, paternity: 0 },
+                    year: new Date().getFullYear()
+                };
+            }));
             promises.push(holidayService.getUpcomingHolidays(5));
 
             // Admin/HR get additional stats
@@ -42,8 +51,8 @@ const Dashboard = () => {
 
             // Employees get their recent data
             if (hasRole('EMPLOYEE')) {
-                promises.push(leaveService.getMyLeaves({ limit: 5 }));
-                promises.push(ticketService.getMyTickets({ limit: 5 }));
+                promises.push(leaveService.getLeaves({ limit: 5 }));
+                promises.push(ticketService.getTickets({ limit: 5 }));
             }
 
             const results = await Promise.allSettled(promises);
@@ -60,6 +69,7 @@ const Dashboard = () => {
                             newData.userStats = data;
                             break;
                         case 1: // Leave balance
+                            console.log('Leave balance data:', data);
                             newData.leaveBalance = data;
                             break;
                         case 2: // Upcoming holidays
@@ -94,6 +104,7 @@ const Dashboard = () => {
                 }
             });
 
+            console.log('Final dashboard data:', newData);
             setDashboardData(newData);
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -143,23 +154,26 @@ const Dashboard = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {/* Leave Balance Card */}
-                    {dashboardData.leaveBalance && (
-                        <div className="bg-white rounded-lg shadow p-6">
-                            <div className="flex items-center">
-                                <div className="p-2 bg-blue-100 rounded-lg">
-                                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-4">
-                                    <p className="text-sm font-medium text-gray-600">Leave Balance</p>
-                                    <p className="text-2xl font-bold text-gray-900">
-                                        {dashboardData.leaveBalance.annual || 0} days
-                                    </p>
-                                </div>
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div className="ml-4">
+                                <p className="text-sm font-medium text-gray-600">Leave Balance</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {dashboardData.leaveBalance ? (
+                                        dashboardData.leaveBalance.available?.annual ||
+                                        dashboardData.leaveBalance.balance?.annual ||
+                                        dashboardData.leaveBalance.annual ||
+                                        0
+                                    ) : 0} days
+                                </p>
                             </div>
                         </div>
-                    )}
+                    </div>
 
                     {/* Department Card */}
                     <div className="bg-white rounded-lg shadow p-6">

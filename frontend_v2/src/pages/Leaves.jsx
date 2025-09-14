@@ -38,9 +38,9 @@ const Leaves = () => {
     const fetchLeaves = async () => {
         try {
             setLoading(true);
-            const params = filter !== 'all' ? { status: filter } : {};
-            const data = await leaveService.getLeaves(params);
-            setLeaves(data.leaves);
+            // Fetch all leaves and filter on frontend for better control
+            const data = await leaveService.getLeaves();
+            setLeaves(data.leaves || []);
         } catch (error) {
             toast.error('Failed to fetch leaves');
             console.error(error);
@@ -48,6 +48,12 @@ const Leaves = () => {
             setLoading(false);
         }
     };
+
+    // Filter leaves based on current filter
+    const filteredLeaves = leaves.filter(leave => {
+        if (filter === 'all') return true;
+        return leave.status?.toLowerCase() === filter.toLowerCase();
+    });
 
     const fetchLeaveSummary = async () => {
         try {
@@ -80,11 +86,12 @@ const Leaves = () => {
         try {
             await leaveService.updateLeaveStatus(
                 reviewModal.leave._id,
-                reviewModal.action === 'approved' ? 'approved' : 'rejected',
+                reviewModal.action === 'approved' ? 'APPROVED' : 'REJECTED',
                 reviewModal.action === 'rejected' ? rejectionReason : ''
             );
             toast.success(`Leave ${reviewModal.action === 'approved' ? 'approved' : 'rejected'} successfully`);
             setReviewModal({ show: false, leave: null, action: '' });
+            setRejectionReason('');
             fetchLeaves();
         } catch (error) {
             toast.error(error.response?.data?.error || `Failed to ${reviewModal.action} leave`);
@@ -113,7 +120,8 @@ const Leaves = () => {
     };
 
     const getStatusBadge = (status) => {
-        switch (status) {
+        const normalizedStatus = status?.toLowerCase();
+        switch (normalizedStatus) {
             case 'approved':
                 return (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -143,7 +151,11 @@ const Leaves = () => {
                     </span>
                 );
             default:
-                return null;
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {status || 'Unknown'}
+                    </span>
+                );
         }
     };
 
@@ -190,6 +202,111 @@ const Leaves = () => {
                     </div>
                 )}
             </div>
+
+            {/* Pending Leaves Section for HR/Admin */}
+            {(isHR || isAdmin) && (
+                <div className="mt-8">
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl shadow-sm">
+                        <div className="px-6 py-4 border-b border-orange-200">
+                            <div className="flex items-center space-x-3">
+                                <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg">
+                                    <ClockIcon className="h-6 w-6 text-orange-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        Pending Leave Requests
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        Review and approve employee leave requests
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            {loading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+                                        <span className="text-gray-600">Loading pending requests...</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {leaves.filter(leave => leave.status?.toLowerCase() === 'pending').length > 0 ? (
+                                        leaves.filter(leave => leave.status?.toLowerCase() === 'pending').map((leave) => (
+                                            <div key={leave._id} className="bg-white rounded-lg border border-orange-200 p-4 hover:shadow-md transition-shadow duration-200">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-start space-x-4">
+                                                        <div className="flex-shrink-0">
+                                                            <img
+                                                                className="h-12 w-12 rounded-full ring-2 ring-orange-100"
+                                                                src={`https://ui-avatars.com/api/?name=${leave.user?.fullName?.first || leave.user?.name}&background=f97316&color=fff&size=64&bold=true`}
+                                                                alt={leave.user?.fullName?.first || leave.user?.name}
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center space-x-2 mb-1">
+                                                                <h4 className="text-base font-semibold text-gray-900">
+                                                                    {leave.user?.fullName?.first || leave.user?.name || 'Unknown User'}
+                                                                </h4>
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                                    Pending Review
+                                                                </span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center text-sm text-gray-600">
+                                                                    <CalendarIcon className="w-4 h-4 mr-2 text-gray-400" />
+                                                                    {leave.leaveType} • {formatDate(leave.startDate)} - {formatDate(leave.endDate)} ({leave.days} day{leave.days > 1 ? 's' : ''})
+                                                                </div>
+                                                                {leave.reason && (
+                                                                    <div className="text-sm text-gray-600">
+                                                                        <span className="font-medium">Reason:</span> {leave.reason}
+                                                                    </div>
+                                                                )}
+                                                                {leave.backupPerson && (
+                                                                    <div className="text-sm text-gray-600">
+                                                                        <span className="font-medium">Backup:</span> {leave.backupPerson}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2 ml-4">
+                                                        <button
+                                                            onClick={() => handleReviewLeave(leave, 'approved')}
+                                                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+                                                        >
+                                                            <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                                            Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleReviewLeave(leave, 'rejected')}
+                                                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
+                                                        >
+                                                            <XCircleIcon className="h-4 w-4 mr-1" />
+                                                            Reject
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                                <CheckCircleIcon className="w-8 h-8 text-gray-400" />
+                                            </div>
+                                            <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
+                                            <p className="text-gray-600">
+                                                There are no pending leave requests at this time.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Leave Summary for Employees */}
             {isEmployee && leaveSummary && (
@@ -447,20 +564,64 @@ const Leaves = () => {
             {/* Filter Tabs */}
             <div className="mt-6 border-b border-gray-200">
                 <nav className="-mb-px flex space-x-8">
-                    {['all', 'pending', 'approved', 'rejected', 'cancelled'].map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setFilter(status)}
-                            className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm capitalize ${filter === status
-                                ? 'border-primary-500 text-primary-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                        >
-                            {status}
-                        </button>
-                    ))}
+                    {[
+                        { key: 'all', label: 'All Leaves', color: 'gray' },
+                        { key: 'pending', label: 'Pending', color: 'yellow' },
+                        { key: 'approved', label: 'Approved', color: 'green' },
+                        { key: 'rejected', label: 'Rejected', color: 'red' },
+                        { key: 'cancelled', label: 'Cancelled', color: 'gray' }
+                    ].map(({ key, label, color }) => {
+                        const count = key === 'all'
+                            ? leaves.length
+                            : leaves.filter(leave => leave.status?.toLowerCase() === key.toLowerCase()).length;
+
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => setFilter(key)}
+                                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${filter === key
+                                        ? 'border-primary-500 text-primary-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
+                            >
+                                <span>{label}</span>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${filter === key
+                                        ? 'bg-primary-100 text-primary-800'
+                                        : `bg-${color}-100 text-${color}-800`
+                                    }`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </nav>
             </div>
+
+            {/* Filter Summary */}
+            {filteredLeaves.length > 0 && (
+                <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-6">
+                            <div className="text-sm text-gray-600">
+                                Showing <span className="font-medium text-gray-900">{filteredLeaves.length}</span> of <span className="font-medium text-gray-900">{leaves.length}</span> leave requests
+                            </div>
+                            {filter !== 'all' && (
+                                <div className="text-sm text-gray-500">
+                                    Filtered by: <span className="font-medium capitalize">{filter}</span>
+                                </div>
+                            )}
+                        </div>
+                        {filter !== 'all' && (
+                            <button
+                                onClick={() => setFilter('all')}
+                                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                            >
+                                Clear Filter
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Leaves List */}
             <div className="mt-6">
@@ -471,7 +632,7 @@ const Leaves = () => {
                             <span className="ml-2">Loading...</span>
                         </div>
                     </div>
-                ) : leaves.length === 0 ? (
+                ) : filteredLeaves.length === 0 ? (
                     <div className="text-center py-12 bg-white rounded-lg">
                         <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No leave requests</h3>
@@ -482,7 +643,7 @@ const Leaves = () => {
                 ) : (
                     <div className="bg-white shadow overflow-hidden sm:rounded-md">
                         <ul className="divide-y divide-gray-200">
-                            {leaves.map((leave) => (
+                            {filteredLeaves.map((leave) => (
                                 <li key={leave._id}>
                                     <div className="px-4 py-4 sm:px-6">
                                         <div className="flex items-center justify-between">

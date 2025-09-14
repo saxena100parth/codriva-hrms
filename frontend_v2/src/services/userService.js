@@ -70,7 +70,7 @@ class UserService {
   // Update user role
   async updateUserRole(userId, role) {
     try {
-      const response = await apiService.patch(`/users/${userId}/role`, { role });
+      const response = await apiService.put(`/users/${userId}/role`, { role });
       return response.data;
     } catch (error) {
       throw error;

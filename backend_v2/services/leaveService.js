@@ -245,6 +245,15 @@ class LeaveService {
       throw new Error('User record not found');
     }
 
+    // Ensure leaveBalance exists with default values
+    const leaveBalance = user.leaveBalance || {
+      annual: 1.5,
+      sick: 0,
+      personal: 0,
+      maternity: 0,
+      paternity: 0
+    };
+
     const currentYear = new Date().getFullYear();
     const yearStart = new Date(currentYear, 0, 1);
     const yearEnd = new Date(currentYear, 11, 31);
@@ -266,18 +275,20 @@ class LeaveService {
     };
 
     approvedLeaves.forEach(leave => {
-      leavesByType[leave.leaveType] += leave.numberOfDays;
+      if (leavesByType.hasOwnProperty(leave.leaveType)) {
+        leavesByType[leave.leaveType] += leave.numberOfDays;
+      }
     });
 
     return {
-      balance: user.leaveBalance,
+      balance: leaveBalance,
       taken: leavesByType,
       available: {
-        annual: user.leaveBalance.annual - leavesByType.annual,
-        sick: user.leaveBalance.sick - leavesByType.sick,
-        personal: user.leaveBalance.personal - leavesByType.personal,
-        maternity: user.leaveBalance.maternity - leavesByType.maternity,
-        paternity: user.leaveBalance.paternity - leavesByType.paternity
+        annual: (leaveBalance.annual || 0) - leavesByType.annual,
+        sick: (leaveBalance.sick || 0) - leavesByType.sick,
+        personal: (leaveBalance.personal || 0) - leavesByType.personal,
+        maternity: (leaveBalance.maternity || 0) - leavesByType.maternity,
+        paternity: (leaveBalance.paternity || 0) - leavesByType.paternity
       },
       year: currentYear
     };

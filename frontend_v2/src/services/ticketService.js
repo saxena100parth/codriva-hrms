@@ -1,36 +1,30 @@
 import apiService from './api';
 
 class TicketService {
-  // Get all tickets for current user
-  async getMyTickets(filters = {}, page = 1, limit = 10) {
+  // Get tickets (unified method for all users)
+  async getTickets(filters = {}, page = 1, limit = 10) {
     try {
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
         ...filters
       });
-      
-      const response = await apiService.get(`/tickets/my-tickets?${queryParams}`);
+
+      const response = await apiService.get(`/tickets?${queryParams}`);
       return response.data;
     } catch (error) {
       throw error;
     }
   }
 
-  // Get all tickets (Admin/HR only)
+  // Alias for backward compatibility
+  async getMyTickets(filters = {}, page = 1, limit = 10) {
+    return this.getTickets(filters, page, limit);
+  }
+
+  // Alias for backward compatibility
   async getAllTickets(filters = {}, page = 1, limit = 10) {
-    try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...filters
-      });
-      
-      const response = await apiService.get(`/tickets?${queryParams}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    return this.getTickets(filters, page, limit);
   }
 
   // Get single ticket
@@ -64,43 +58,33 @@ class TicketService {
   }
 
   // Assign ticket (Admin/HR only)
-  async assignTicket(ticketId, assignedTo) {
+  async assignTicket(ticketId, assignTo) {
     try {
-      const response = await apiService.patch(`/tickets/${ticketId}/assign`, { assignedTo });
+      const response = await apiService.put(`/tickets/${ticketId}/assign`, { assignTo });
       return response.data;
     } catch (error) {
       throw error;
     }
   }
 
-  // Update ticket status
-  async updateTicketStatus(ticketId, status) {
+  // Update ticket (includes status, priority, resolution, etc.)
+  async updateTicketStatus(ticketId, updates) {
     try {
-      const response = await apiService.patch(`/tickets/${ticketId}/status`, { status });
+      const response = await apiService.put(`/tickets/${ticketId}`, updates);
       return response.data;
     } catch (error) {
       throw error;
     }
   }
 
-  // Resolve ticket
+  // Alias for backward compatibility
   async resolveTicket(ticketId, resolution) {
-    try {
-      const response = await apiService.patch(`/tickets/${ticketId}/resolve`, { resolution });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    return this.updateTicketStatus(ticketId, { status: 'RESOLVED', resolution });
   }
 
-  // Close ticket
+  // Alias for backward compatibility
   async closeTicket(ticketId) {
-    try {
-      const response = await apiService.patch(`/tickets/${ticketId}/close`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    return this.updateTicketStatus(ticketId, { status: 'CLOSED' });
   }
 
   // Add comment to ticket
@@ -119,7 +103,7 @@ class TicketService {
   // Rate ticket
   async rateTicket(ticketId, rating, feedback = '') {
     try {
-      const response = await apiService.post(`/tickets/${ticketId}/rate`, {
+      const response = await apiService.post(`/tickets/${ticketId}/rating`, {
         rating,
         feedback
       });

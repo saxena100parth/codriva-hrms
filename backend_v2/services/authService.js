@@ -157,11 +157,14 @@ class AuthService {
 
   // Update profile
   async updateProfile(userId, updateData) {
-    const { fullName, personalEmail } = updateData;
+    // Filter out undefined values to avoid overwriting with undefined
+    const filteredData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined)
+    );
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { fullName, personalEmail },
+      filteredData,
       { new: true, runValidators: true }
     ).select('-password');
 

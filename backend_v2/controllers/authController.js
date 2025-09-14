@@ -74,15 +74,46 @@ exports.getMe = asyncHandler(async (req, res, next) => {
 // @access  Private
 exports.updateDetails = asyncHandler(async (req, res, next) => {
   const sanitizedData = {
-    fullName: sanitizeInput(req.body.fullName),
-    personalEmail: sanitizeInput(req.body.personalEmail)
+    fullName: req.body.fullName,
+    personalEmail: sanitizeInput(req.body.personalEmail),
+    mobileNumber: sanitizeInput(req.body.mobileNumber),
+    dateOfBirth: req.body.dateOfBirth,
+    gender: sanitizeInput(req.body.gender),
+    email: sanitizeInput(req.body.email),
+    jobTitle: sanitizeInput(req.body.jobTitle),
+    department: sanitizeInput(req.body.department),
+    employmentType: sanitizeInput(req.body.employmentType),
+    reportingManagerName: sanitizeInput(req.body.reportingManagerName),
+    joiningDate: req.body.joiningDate,
+    currentAddress: req.body.currentAddress,
+    permanentAddress: req.body.permanentAddress,
+    bankAccountNumber: sanitizeInput(req.body.bankAccountNumber),
+    ifscSwiftRoutingCode: sanitizeInput(req.body.ifscSwiftRoutingCode),
+    taxId: sanitizeInput(req.body.taxId),
+    emergencyContact: req.body.emergencyContact,
+    compliance: req.body.compliance
   };
 
-  // Validate email if provided
+  // Validate emails if provided
   if (sanitizedData.personalEmail && !isValidEmail(sanitizedData.personalEmail)) {
     return res.status(400).json({
       success: false,
-      error: 'Please provide a valid email address'
+      error: 'Please provide a valid personal email address'
+    });
+  }
+
+  if (sanitizedData.email && !isValidEmail(sanitizedData.email)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please provide a valid work email address'
+    });
+  }
+
+  // Validate mobile number if provided
+  if (sanitizedData.mobileNumber && !isValidMobileNumber(sanitizedData.mobileNumber)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please provide a valid 10-digit mobile number'
     });
   }
 

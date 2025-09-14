@@ -7,13 +7,10 @@ import ErrorHandler from './components/ErrorHandler';
 
 // Components
 import Header from './components/Header';
-import Hero from './components/Hero';
-import Features from './components/Features';
-import Stats from './components/Stats';
-import Testimonials from './components/Testimonials';
-import CTA from './components/CTA';
+import LandingPage from './components/LandingPage';
 import Footer from './components/Footer';
 import Login from './components/Login';
+import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 
 // Pages
@@ -71,15 +68,6 @@ function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
   const { error: globalError, handleError, clearError, handleRetry } = useErrorHandler();
 
-  // Debug logging
-  console.log('AppContent - Auth state:', {
-    isAuthenticated,
-    isLoading,
-    needsPasswordReset,
-    userRole: user?.role,
-    hasTemporaryPassword: user?.hasTemporaryPassword,
-    onboardingStatus: user?.onboardingStatus
-  });
 
 
   // Reset login modal when user becomes authenticated
@@ -113,13 +101,7 @@ function AppContent() {
         />
 
         <Header onLoginClick={() => setShowLogin(true)} />
-        <main>
-          <Hero onLoginClick={() => setShowLogin(true)} />
-          <Features />
-          <Stats />
-          <Testimonials />
-          <CTA onLoginClick={() => setShowLogin(true)} />
-        </main>
+        <LandingPage onLoginClick={() => setShowLogin(true)} />
         <Footer />
 
         {/* Login Modal */}
@@ -138,7 +120,6 @@ function AppContent() {
 
   // Check if user needs password reset first (takes precedence over dashboard)
   if (needsPasswordReset) {
-    console.log('AppContent: Redirecting to password reset because needsPasswordReset = true');
     return <Navigate to="/password-reset" replace />;
   }
 
@@ -158,12 +139,13 @@ function App() {
       <Router>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/password-reset" element={<PasswordReset />} />
           <Route path="/error-test" element={<ErrorTest />} />
           <Route path="/password-reset-test" element={<PasswordReset />} />
-          <Route path="/" element={<AppContent />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/home" element={<AppContent />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
@@ -193,7 +175,7 @@ function App() {
           </Route>
 
           {/* Catch All Route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
 
         {/* Global Toast Notifications */}

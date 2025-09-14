@@ -39,8 +39,8 @@ class AuthService {
   // Update user profile
   async updateProfile(userData) {
     try {
-      const response = await apiService.put('/auth/profile', userData);
-      return response.data;
+      const response = await apiService.put('/auth/updatedetails', userData);
+      return response;
     } catch (error) {
       throw error;
     }
